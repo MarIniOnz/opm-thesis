@@ -1,6 +1,3 @@
-[submodule "xdf2mne"]
-	path = xdf2mne
-	url = git@github.com:MarIniOnz/xdf2mne.git
 [submodule "opm_thesis/fieldline_lsl"]
 	path = opm_thesis/fieldline_lsl
 	url = git@github.com:MarIniOnz/fieldline_lsl.git
