@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+[tool.ruff]
+exclude = [
+    "__pycache__",
+    ".devcontainer",
+    "notebooks",
+    ".vscode",
+    "data",
+    ".git",
+    ".github",
+    ".ruff_cache",
+    ".venv",
+]
+line-length = 88
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | __pycache__
+  | .devcontainer
+  | notebooks
+  | .vscode
+  | data
+  | .git
+  | .github
+  | .ruff_cache
+  | .venv
+)/
+'''

@@ -1,0 +1,45 @@
+name: Initialize the project from template
+
+on: [push]
+
+permissions: write-all
+
+jobs:
+  rename-project:
+    if: ${{ !contains (github.repository, '/python-template') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - run: echo "REPOSITORY_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+        shell: bash
+
+      - run: echo "REPOSITORY_NAME_SNAKE_CASE=$(echo ${{ env.REPOSITORY_NAME }} | sed -e 's,-,_,')" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Is this still a template
+        id: is_template
+        run: echo "::set-output name=is_template::$(ls .github/template.yml &> /dev/null && echo true || echo false)"
+
+      - name: Initialize the project
+        if: steps.is_template.outputs.is_template == 'true'
+        run: |
+          echo "Renaming the project to ${{ env.REPOSITORY_NAME }}"
+          sed -i -e s/custom_module/${{ env.REPOSITORY_NAME_SNAKE_CASE }}/g docker-compose.yml
+          sed -i -e s/custom_module/${{ env.REPOSITORY_NAME_SNAKE_CASE }}/g Makefile
+          sed -i -e s/custom_module/${{ env.REPOSITORY_NAME_SNAKE_CASE }}/g setup.py
+          sed -i -e s/python-template/${{ env.REPOSITORY_NAME }}/g .lfsconfig
+          sed -i -e s/python-template/${{ env.REPOSITORY_NAME }}/g README.md
+          sed -i -e s/python-template/${{ env.REPOSITORY_NAME }}/g .devcontainer/devcontainer.json
+          sed -i -e s/python-template/${{ env.REPOSITORY_NAME }}/g .devcontainer/docker-compose.devcontainer.yml
+          mv custom_module ${{ env.REPOSITORY_NAME_SNAKE_CASE }}
+          rm -f .github/template.yml
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        if: steps.is_template.outputs.is_template == 'true'
+        with:
+          commit_message: "Initialized repository"
+          push_options: --force
