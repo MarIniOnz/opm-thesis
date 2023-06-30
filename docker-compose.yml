@@ -5,4 +5,4 @@ jupyterlab:
   volumes:
     - ./data:/app/data
     - ./notebooks:/app/notebooks
-    - ./custom_module:/app/custom_module
+    - ./opm_thesis:/app/opm_thesis

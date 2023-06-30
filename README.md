@@ -1,4 +1,4 @@
-# python-template
+# opm-thesis
 
 ## Setup
 

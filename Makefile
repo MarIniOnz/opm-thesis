@@ -25,6 +25,6 @@ format: install
 
 clean:
 	rm -rf .venv
-	rm -rf custom_module.egg-info
+	rm -rf opm_thesis.egg-info
 	rm -rf .ruff_cache
-	find ./custom_module -name __pycache__ -type d -exec rm -r {} +
+	find ./opm_thesis -name __pycache__ -type d -exec rm -r {} +
