@@ -1,8 +1,0 @@
-jupyterlab:
-  build: .
-  ports:
-    - "8888:8888"
-  volumes:
-    - ./data:/app/data
-    - ./notebooks:/app/notebooks
-    - ./opm_thesis:/app/opm_thesis
