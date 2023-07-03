@@ -1,5 +1,4 @@
 appdirs==1.4.3
-fieldline-api==0.4.0
 ifaddr==0.1.7
 jupyter-client==7.3.4
 jupyter-core==4.11.1
@@ -10,6 +9,7 @@ jupyterlab-server==2.15.0
 jupyterlab-widgets==3.0.2
 matplotlib==3.5.3
 matplotlib-inline==0.1.6
+mne==1.4.2
 netifaces==0.11.0
 numpy==1.23.2
 protobuf==3.19.4
