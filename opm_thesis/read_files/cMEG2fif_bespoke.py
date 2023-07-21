@@ -27,16 +27,22 @@ from opm_thesis.read_files.utils import (
 
 mne.viz.set_3d_backend("pyvistaqt")
 
-#%% configure subjects directory
-subjects_dir = ""
-subject = "11766"
 
-root = tk.Tk()  # create a Tk root window (GUI window)
-root.withdraw()  # hide the Tk root window
+#%% configure subjects directory
+subjects_dir = "C:\\Users\\user\\Desktop\\MasterThesis\\data_nottingham"
+subject = "11766"
+day = "20230622"
+scan = "155445"
 
 #%% Data filename and path
-# TODO: Replace by normal thing
-file_path = filedialog.askopenfilename(title="Choose cMEG File")
+file_path = os.path.join(
+    subjects_dir,
+    day,
+    "Bespoke scans",
+    day + "_" + scan + "_cMEG_Data",
+    day + "_" + scan + "_meg.cMEG",
+)
+file_path = file_path.replace("\\", "/")
 file_path_split = os.path.split(file_path)
 fpath = file_path_split[0] + "/"
 fname = file_path_split[1]
@@ -78,7 +84,9 @@ try:
     ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])
 except KeyError:
     tsv_file["channels"].rename(columns={"nT0x2FV": "nT/V"}, inplace=True)
-    ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])  # Scale factor from V to nT
+    ch_scale = pd.Series.tolist(
+        tsv_file["channels"]["nT/V"]
+    )  # Scale factor from V to nT
 ch_names, ch_types, data = get_channels_and_data(data_raw, tsv_file, ch_scale)
 sfreq = samp_freq
 
@@ -213,12 +221,13 @@ epochs = mne.Epochs(raw, events=events, event_repeated="merge")
 fig = mne.viz.plot_alignment(
     raw.info,
     # trans = mne.transforms.Transform("head", "mri"),
-    subject = subject,
-    subjects_dir = subjects_dir,
+    subject=subject,
+    subjects_dir=subjects_dir,
     # surfaces=["head-dense","white"],
     show_axes=True,
     dig=True,
     meg="sensors",
-    coord_frame="head")
+    coord_frame="head",
+)
 
 # %%
