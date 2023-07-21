@@ -35,6 +35,7 @@ root = tk.Tk()  # create a Tk root window (GUI window)
 root.withdraw()  # hide the Tk root window
 
 #%% Data filename and path
+# TODO: Replace by normal thing
 file_path = filedialog.askopenfilename(title="Choose cMEG File")
 file_path_split = os.path.split(file_path)
 fpath = file_path_split[0] + "/"
@@ -52,6 +53,7 @@ del data_input
 
 fname_pre = fname.split("_meg.cMEG")[0]
 f = open(fpath + fname_pre + "_meg.json")
+# TODO: check if the names make sense between channels and HelmConfig
 tsv_file = {
     "channels": pd.read_csv(fpath + fname_pre + "_channels.tsv", sep="\t"),
     "HelmConfig": pd.read_csv(fpath + fname_pre + "_HelmConfig.tsv", sep="\t"),
@@ -68,6 +70,7 @@ names = tsv_file["channels"]["name"]
 sensors = tsv_file["HelmConfig"]["Sensor"]
 loc_idx = find_matching_indices(names, sensors)
 chans = create_chans_dict(tsv_file, loc_idx)
+# TODO: make it so it is a DataFrame instead of a dict of lists.
 
 #%% Sensor information
 print("Sorting Sensor Information")
@@ -75,7 +78,7 @@ try:
     ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])
 except KeyError:
     tsv_file["channels"].rename(columns={"nT0x2FV": "nT/V"}, inplace=True)
-    ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])
+    ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])  # Scale factor from V to nT
 ch_names, ch_types, data = get_channels_and_data(data_raw, tsv_file, ch_scale)
 sfreq = samp_freq
 
@@ -86,7 +89,9 @@ info["line_freq"] = tsv_file["JSON"]["PowerLineFrequency"]
 
 #%% Sort sensor locations
 print("Sensor Location Information")
-nmeg = nstim = nref = 0
+nmeg = 0
+nstim = 0
+nref = 0
 chs = list()
 
 for ii in range(tsv_file["channels"].shape[0]):
@@ -109,6 +114,7 @@ for ii in range(tsv_file["channels"].shape[0]):
         ch["loc"] = calc_pos(pos, ori)
 
     # Update channel depending on type
+    # TODO: check if we can do ch_types instead of this weird replacement
     if chans["Channel_Type"][ii].replace(" ", "") == "TRIG":  # its a trigger!
         nstim += 1
         info["chs"][ii].update(
@@ -151,9 +157,12 @@ for ii in range(tsv_file["channels"].shape[0]):
             loc=ch["loc"],
             cal=1e-9 / tsv_file["channels"]["nT/V"][ii],
         )
+        # TODO: check if we are not multiplying twice by the factor.
 
     chs.append(ch)
 
+# Might need some transform for the sensor positions (from MNE to head reference
+# frame) Quaternion 4x4 matrix. For now for us we see its identity.
 info["dev_head_t"] = mne.transforms.Transform(
     "meg", "head", pd.DataFrame(tsv_file["SensorTransform"]).to_numpy()
 )
@@ -163,20 +172,23 @@ info["dev_head_t"] = mne.transforms.Transform(
 print("Create raw object")
 raw = mne.io.RawArray(data, info)
 
-# Set bad channels defined in channels.tsv
+# Set bad channels defined in channels.tsv. Do not know if its something we need to do
+# ourselves.
 idx = tsv_file["channels"].status.str.strip() == "Bad"
 bad_ch = tsv_file["channels"].name[idx.values]
 raw.info["bads"] = bad_ch.str.replace(" ", "").to_list()
 
 #%% Create events
+# TODO: try and fix it. events not 100% well defined.
 stm_misc_chans = mne.pick_types(info, stim=True, misc=True)
-trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)
+trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we consider more than 2 V,
+# it is a trigger
 trig_ID, on_inds = np.where(np.diff(trig_data, axis=1) == 1)
 if len(trig_ID) > 0:
     events = np.concatenate(
         [
             np.expand_dims(on_inds, axis=1) + 1,
-            np.expand_dims(np.zeros(np.shape(on_inds)), axis=1),
+            np.expand_dims(np.ones(np.shape(on_inds)), axis=1),  # Could be duration
             np.expand_dims(trig_ID, axis=1) + 1,
         ],
         axis=1,
@@ -191,7 +203,22 @@ for ii in range(tsv_file["channels"].shape[0]):
     if sum(np.isnan(pos1)) == 0:
         ch_pos[chans["Channel_Name"][ii].replace(" ", "")] = pos1
 
+# It is a system of 3D points. We need to convert it to a montage. Can be used for
+# Source Analysis and ICA maybe? We might leave it out for now?
 mtg = mne.channels.make_dig_montage(ch_pos=ch_pos)
-raw.set_montage(mtg)
+raw.set_montage(mtg)  # TODO: problems setting the montage
 
+epochs = mne.Epochs(raw, events=events, event_repeated="merge")
+# %%
+fig = mne.viz.plot_alignment(
+    raw.info,
+    # trans = mne.transforms.Transform("head", "mri"),
+    subject = subject,
+    subjects_dir = subjects_dir,
+    # surfaces=["head-dense","white"],
+    show_axes=True,
+    dig=True,
+    meg="sensors",
+    coord_frame="head")
 
+# %%

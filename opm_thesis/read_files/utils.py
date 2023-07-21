@@ -152,14 +152,16 @@ def get_channels_and_data(
     ch_types = []
     data = np.empty(data_raw.shape)
     ch_names = get_channel_names(tsv_file)
+    # We got through the type of channels.
     for count, n in enumerate(pd.Series.tolist(tsv_file["channels"]["type"])):
         print(100 * (count + 1) / len(ch_names))
 
+        # Change MEGMAG to mag because that way it is MNE compatible.
         if n.replace(" ", "") == "MEGMAG":
             ch_types.append("mag")
             data[count, :] = (
                 1e-9 * data_raw[count, :] / ch_scale[count]
-            )  # convert mag channels to T
+            )  # convert mag channels to T (nT to T)
         elif n.replace(" ", "") == "TRIG":
             ch_types.append("stim")
             data[count, :] = data_raw[count, :]  # Trigger channels stay as Volts
@@ -193,27 +195,32 @@ def _calc_tangent(RDip: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         tanv[1] = 1.0
         tanv[2] = 0
     else:
-        RZXY = -(r - z) * x * y
-        X2Y2 = 1 / (x * x + y * y)
+        rzxy = -(r - z) * x * y
+        x2y2 = 1 / (x * x + y * y)
 
-        tanu[0] = (z * x * x + r * y * y) * X2Y2 / r
-        tanu[1] = RZXY * X2Y2 / r
+        tanu[0] = (z * x * x + r * y * y) * x2y2 / r
+        tanu[1] = rzxy * x2y2 / r
         tanu[2] = -x / r
 
-        tanv[0] = RZXY * X2Y2 / r
-        tanv[1] = (z * y * y + r * x * x) * X2Y2 / r
+        tanv[0] = rzxy * x2y2 / r
+        tanv[1] = (z * y * y + r * x * x) * x2y2 / r
         tanv[2] = -y / r
 
     return tanu, tanv
 
+
 def calc_pos(pos: np.ndarray, ori: np.ndarray) -> np.ndarray:
-    """ Create the position information for a given sensor.
+    """Create the position information for a given sensor.
 
     :param pos: The position of the sensor.
     :type pos: np.ndarray
     :param ori: The orientation of the sensor.
     :type ori: np.ndarray
-    :return: The position information.
+    :return: The position information. 12 coordinates per sensor.
+        r0: location (3 coordinates)
+        ex: orientation vector (plane x) (3 coordinates)
+        ey: orientation vector (plane y) (3 coordinates)
+        ez: orientation vector (plane z) (3 coordinates)
     :rtype: np.ndarray
     """
     r0 = pos.copy()
