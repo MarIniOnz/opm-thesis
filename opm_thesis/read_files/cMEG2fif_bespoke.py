@@ -197,18 +197,7 @@ def get_data_mne(data_dir: str, day="20230622", scan="155445"):
     #%% Create events
     # TODO: try and fix it. events not 100% well defined.
     stm_misc_chans = mne.pick_types(info, stim=True, misc=True)
-
-    data_stim = data[stm_misc_chans]
-    ##
-    data_stim = np.array([[0, 0, 1, 1, 0, 0], [0, 1, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
-
-    trig_data_sum = np.sum(data_stim, axis=0) > 2
-
-    on_inds = np.where(np.diff(trig_data_sum) == 1)[0]
-    print(on_inds)
-
-    ##
-    trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we consider more than 2 V,
+    trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we have more than 2V,
     # it is a trigger
     trig_ID, on_inds = np.where(np.diff(trig_data, axis=1) == 1)
     if len(trig_ID) > 0:

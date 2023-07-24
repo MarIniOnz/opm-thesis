@@ -25,7 +25,7 @@ calc_pos,
 
 # mne.viz.set_3d_backend("pyvistaqt")
 
-data_dir = r'D:\PhD\data\2023-06-21_nottingham'
+data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
 day="20230622"
 scan="155445"
 
@@ -216,9 +216,9 @@ import scipy.signal
 data_stim_conv = []
 for channel_idx in range(data_stim.shape[0]):
     window = np.ones(5)
-    # window = window / sum(window)
+    window = window / sum(window)
 
-    data_stim_conv.append(np.convolve(data_stim[channel_idx, :], window))
+    data_stim_conv.append(np.convolve(data_stim[channel_idx, :], window, mode="same"))
 
 data_stim_conv = np.array(data_stim_conv)
 
@@ -226,9 +226,13 @@ data_stim_conv = np.array(data_stim_conv)
 
 event_values = []
 for on_ind in on_inds:
-    event_values.append(np.sum((data_stim_conv[:, on_ind] > 1) * 2**np.arange(0, 8)))
+    event_values.append(np.sum((data_stim_conv[:, on_ind] > 0.5) * 2**np.arange(0, 8)))
 
 events = {i: (value, f"{value:08b}") for i, value in enumerate(event_values)}
+ind = 535549
+time = 446.29083333333335
+
+
 
 #
 # import matplotlib.pyplot as plt
