@@ -10,36 +10,36 @@ import mne
 import os
 import pandas as pd
 import json
-
-# the following import is required for matplotlib < 3.2:
-from mpl_toolkits.mplot3d import Axes3D  # noqa
+from typing import Tuple
 from mne.io.constants import FIFF
 
-from utils import (
+from opm_thesis.read_files.utils import (
     read_old_cMEG,
     find_matching_indices,
     create_chans_dict,
     get_channels_and_data,
     calc_pos,
+    conv_square_window,
 )
 
-# mne.viz.set_3d_backend("pyvistaqt")
 
-def get_data_mne(data_dir: str, day="20230622", scan="155445"):
-    """ Get data from a cMEG file and convert it to a MNE raw object.
+def get_data_mne(
+    data_dir: str, day="20230622", acq_time="155445"
+) -> Tuple[mne.io.array.array.RawArray, np.ndarray, dict]:
+    """Get data from a cMEG file and convert it to a MNE raw object.
 
     :param subjects_dir: The path to the data directory.
     :type subjects_dir: str
     :param day: The day of the scan.
     :type day: str
-    :param scan: The time of the scan.
-    :type scan: str
+    :param acq_time: The time of the scan.
+    :type acq_time: str
     :return: The MNE raw object and the events.
     :rtype: mne.io.RawArray, np.ndarray
     """
 
     #%% configure subjects directory
-    # data_dir = "C:\\Users\\user\\Desktop\\MasterThesis\\data_nottingham"
+    # data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
     # subject = "11766"
 
     #%% Data filename and path
@@ -47,8 +47,8 @@ def get_data_mne(data_dir: str, day="20230622", scan="155445"):
         data_dir,
         day,
         "Bespoke scans",
-        day + "_" + scan + "_cMEG_Data",
-        day + "_" + scan + "_meg.cMEG",
+        day + "_" + acq_time + "_cMEG_Data",
+        day + "_" + acq_time + "_meg.cMEG",
     )
     file_path = file_path.replace("\\", "/")
     file_path_split = os.path.split(file_path)
@@ -61,8 +61,7 @@ def get_data_mne(data_dir: str, day="20230622", scan="155445"):
 
     # Load data
     data_input = read_old_cMEG(fpath + fname)
-    time = data_input[0, :]
-    data_raw = data_input[1:, :]
+    data_raw = data_input[1:, :]  # Remove first row, including time stamps
     del data_input
 
     fname_pre = fname.split("_meg.cMEG")[0]
@@ -183,59 +182,62 @@ def get_data_mne(data_dir: str, day="20230622", scan="155445"):
         "meg", "head", pd.DataFrame(tsv_file["SensorTransform"]).to_numpy()
     )
 
-
     #%% Create MNE raw object
     print("Create raw object")
     raw = mne.io.RawArray(data, info)
 
-    # Set bad channels defined in channels.tsv. Do not know if its something we need to do
-    # ourselves.
+    # Set bad channels defined in channels.tsv. Do not know if its something we need to
+    # do ourselves.
     idx = tsv_file["channels"].status.str.strip() == "Bad"
     bad_ch = tsv_file["channels"].name[idx.values]
     raw.info["bads"] = bad_ch.str.replace(" ", "").to_list()
 
-    #%% Create events
-    # TODO: try and fix it. events not 100% well defined.
+    # %% Create events
     stm_misc_chans = mne.pick_types(info, stim=True, misc=True)
-    trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we have more than 2V,
-    # it is a trigger
-    trig_ID, on_inds = np.where(np.diff(trig_data, axis=1) == 1)
-    if len(trig_ID) > 0:
-        events = np.concatenate(
-            [
-                np.expand_dims(on_inds, axis=1) + 1,
-                np.expand_dims(np.zeros(np.shape(on_inds)), axis=1),  # Could be duration
-                np.expand_dims(trig_ID, axis=1) + 1,
-            ],
-            axis=1,
-        ).astype(np.int64)
+    data_stim = data[stm_misc_chans]
+    trig_data_sum = (np.sum(data_stim, axis=0) >= 1) * 1.0
+    on_inds = np.where(np.diff(trig_data_sum, prepend=0) == 1)[0]
 
-    #%% Digitisation and montage
+    # Convolute to fix when triggers are not happening exactly at same sample time
+    data_stim_conv = conv_square_window(data=data_stim, window_size=5)
 
-    print("Digitisation")
-    ch_pos = dict()
-    for ii in range(tsv_file["channels"].shape[0]):
-        pos1 = chans["Locations"][ii]
-        if sum(np.isnan(pos1)) == 0:
-            ch_pos[chans["Channel_Name"][ii].replace(" ", "")] = pos1
+    event_values = []
+    for on_ind in on_inds:
+        event_values.append(
+            np.sum((data_stim_conv[:, on_ind] > 0.5) * 2 ** np.arange(0, 8))
+        )
+
+    events = np.array(
+        [(on_ind, 0, value) for on_ind, value in zip(on_inds, event_values)]
+    )
+
+    events_id = {
+        "start_trial_1": 1,
+        "start_trial_2": 2,
+        "start_trial_3": 3,
+        "start_trial_4": 4,
+        "start_trial_5": 5,
+        "stop_trial": 7,
+        "press_1": 8,
+        "press_2": 16,
+        "press_3": 32,
+        "press_4": 64,
+        "press_5": 128,
+        "experiment_marker": 255,
+    }
+
+    # #%% Digitisation and montage
+
+    # print("Digitisation")
+    # ch_pos = dict()
+    # for ii in range(tsv_file["channels"].shape[0]):
+    #     pos1 = chans["Locations"][ii]
+    #     if sum(np.isnan(pos1)) == 0:
+    #         ch_pos[chans["Channel_Name"][ii].replace(" ", "")] = pos1
 
     # It is a system of 3D points. We need to convert it to a montage. Can be used for
     # Source Analysis and ICA maybe? We might leave it out for now?
     # mtg = mne.channels.make_dig_montage(ch_pos=ch_pos)
     # raw.set_montage(mtg)  # TODO: problems setting the montage
 
-    # epochs = mne.Epochs(raw, events=events, event_repeated="merge")
-    # %%
-    # fig = mne.viz.plot_alignment(
-    #     raw.info,
-    #     # trans = mne.transforms.Transform("head", "mri"),
-    #     subject=subject,
-    #     subjects_dir=subjects_dir,
-    #     # surfaces=["head-dense","white"],
-    #     show_axes=True,
-    #     dig=True,
-    #     meg="sensors",
-    #     coord_frame="head",
-    # )
-
-    return raw, events
+    return raw, events, events_id

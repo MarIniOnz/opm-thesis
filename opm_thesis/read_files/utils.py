@@ -1,6 +1,5 @@
 import os
 import re
-import mne
 import numpy as np
 import pandas as pd
 from typing import Tuple, List
@@ -154,8 +153,6 @@ def get_channels_and_data(
     ch_names = get_channel_names(tsv_file)
     # We got through the type of channels.
     for count, n in enumerate(pd.Series.tolist(tsv_file["channels"]["type"])):
-        print(100 * (count + 1) / len(ch_names))
-
         # Change MEGMAG to mag because that way it is MNE compatible.
         if n.replace(" ", "") == "MEGMAG":
             ch_types.append("mag")
@@ -229,3 +226,24 @@ def calc_pos(pos: np.ndarray, ori: np.ndarray) -> np.ndarray:
     ex, ey = _calc_tangent(ez)
     loc = np.concatenate([r0, ex, ey, ez])
     return loc
+
+
+def conv_square_window(data: np.ndarray, window_size: int) -> np.ndarray:
+    """
+    Convolve the data with a square window.
+
+    :param data: The data to be convolved.
+    :type data: np.ndarray
+    :param window_size: The size of the window.
+    :type window_size: int
+    :return: The convolved data.
+    :rtype: np.ndarray
+    """
+    data_stim_conv = []
+    for channel_idx in range(data.shape[0]):
+        window = np.ones(window_size)
+        window = window / sum(window)
+
+        data_stim_conv.append(np.convolve(data[channel_idx, :], window, mode="same"))
+
+    return np.array(data_stim_conv)
