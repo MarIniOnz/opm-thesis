@@ -4,7 +4,7 @@ Load OPM Data, convert for use in MNE
 
 @author: Ryan Hill, Molly Rea, Martin Iniguez
 """
-#%% Import packages
+# %% Import packages
 import numpy as np
 import mne
 import os
@@ -16,20 +16,19 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa
 from mne.io.constants import FIFF
 
 from utils import (
-read_old_cMEG,
-find_matching_indices,
-create_chans_dict,
-get_channels_and_data,
-calc_pos,
+    read_old_cMEG,
+    find_matching_indices,
+    create_chans_dict,
+    get_channels_and_data,
+    calc_pos,
 )
 
 # mne.viz.set_3d_backend("pyvistaqt")
 
 # data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
 data_dir = r'D:\PhD\data\2023-06-21_nottingham'
-day="20230622"
-scan="155445"
-
+day = "20230622"
+scan = "155445"
 
 """ Get data from a cMEG file and convert it to a MNE raw object.
 
@@ -43,11 +42,11 @@ scan="155445"
 :rtype: mne.io.RawArray, np.ndarray
 """
 
-#%% configure subjects directory
+# %% configure subjects directory
 # data_dir = "C:\\Users\\user\\Desktop\\MasterThesis\\data_nottingham"
 # subject = "11766"
 
-#%% Data filename and path
+# %% Data filename and path
 file_path = os.path.join(
     data_dir,
     day,
@@ -60,7 +59,7 @@ file_path_split = os.path.split(file_path)
 fpath = file_path_split[0] + "/"
 fname = file_path_split[1]
 
-#%% Load Data
+# %% Load Data
 # Requires a single cMEG file, doesn't concatenate runs yet
 print("Loading File")
 
@@ -84,14 +83,14 @@ tsv_file = {
 f.close()
 samp_freq = tsv_file["JSON"]["SamplingFrequency"]
 
-#%% Sensor indexes and locations
+# %% Sensor indexes and locations
 names = tsv_file["channels"]["name"]
 sensors = tsv_file["HelmConfig"]["Sensor"]
 loc_idx = find_matching_indices(names, sensors)
 chans = create_chans_dict(tsv_file, loc_idx)
 # TODO: make it so it is a DataFrame instead of a dict of lists.
 
-#%% Sensor information
+# %% Sensor information
 print("Sorting Sensor Information")
 try:
     ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])
@@ -103,12 +102,12 @@ except KeyError:
 ch_names, ch_types, data = get_channels_and_data(data_raw, tsv_file, ch_scale)
 sfreq = samp_freq
 
-#%% Create MNE info object
+# %% Create MNE info object
 print("Creating MNE Info")
 info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types=ch_types)
 info["line_freq"] = tsv_file["JSON"]["PowerLineFrequency"]
 
-#%% Sort sensor locations
+# %% Sort sensor locations
 print("Sensor Location Information")
 nmeg = 0
 nstim = 0
@@ -188,8 +187,7 @@ info["dev_head_t"] = mne.transforms.Transform(
     "meg", "head", pd.DataFrame(tsv_file["SensorTransform"]).to_numpy()
 )
 
-
-#%% Create MNE raw object
+# %% Create MNE raw object
 print("Create raw object")
 raw = mne.io.RawArray(data, info)
 
@@ -199,7 +197,7 @@ idx = tsv_file["channels"].status.str.strip() == "Bad"
 bad_ch = tsv_file["channels"].name[idx.values]
 raw.info["bads"] = bad_ch.str.replace(" ", "").to_list()
 
-#%% Create events
+# %% Create events
 # TODO: try and fix it. events not 100% well defined.
 stm_misc_chans = mne.pick_types(info, stim=True, misc=True)
 
@@ -227,31 +225,27 @@ data_stim_conv = np.array(data_stim_conv)
 
 event_values = []
 for on_ind in on_inds:
-    event_values.append(np.sum((data_stim_conv[:, on_ind] > 0.5) * 2**np.arange(0, 8)))
+    event_values.append(np.sum((data_stim_conv[:, on_ind] > 0.5) * 2 ** np.arange(0, 8)))
 
 events = np.array([(on_ind, 0, value) for on_ind, value in zip(on_inds, event_values)])
-
 
 # events = {i: (value, f"{value:08b}") for i, value in enumerate(event_values)}
 # ind = 535549
 # time = 446.29083333333335
 
-event_id = {
-    1: 'start_trial_1',  # thumb
-    2: 'start_trial_2',  # index
-    3: 'start_trial_3',  # middle
-    4: 'start_trial_4',  # ring
-    5: 'start_trial_5',  # pinky
-    7: 'stop_trial',
-    8: 'press_1',  # buttonpress thumb
-    16: 'press_2',  # buttonpress index
-    32: 'press_3',  # buttonpress middle
-    64: 'press_4',   # buttonpress ring
-    128: 'press_5',  # buttonpress pinky
-    255: 'experiment_marker',
-}
-
-event_id = {val: key for key, val in event_id.items()}
+event_id = {'start_trial_1': 1,
+            'start_trial_2': 2,
+            'start_trial_3': 3,
+            'start_trial_4': 4,
+            'start_trial_5': 5,
+            'stop_trial': 7,
+            'press_1': 8,
+            'press_2': 16,
+            'press_3': 32,
+            'press_4': 64,
+            'press_5': 128,
+            'experiment_marker': 255
+            }
 
 raw.plot(events=events, event_id=event_id, block=True)
 #
@@ -272,7 +266,7 @@ raw.plot(events=events, event_id=event_id, block=True)
 #         axis=1,
 #     ).astype(np.int64)
 
-#%% Digitisation and montage
+# %% Digitisation and montage
 #
 # print("Digitisation")
 # ch_pos = dict()
