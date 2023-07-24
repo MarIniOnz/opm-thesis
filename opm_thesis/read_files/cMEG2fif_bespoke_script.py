@@ -25,7 +25,8 @@ calc_pos,
 
 # mne.viz.set_3d_backend("pyvistaqt")
 
-data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
+# data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
+data_dir = r'D:\PhD\data\2023-06-21_nottingham'
 day="20230622"
 scan="155445"
 
@@ -228,29 +229,48 @@ event_values = []
 for on_ind in on_inds:
     event_values.append(np.sum((data_stim_conv[:, on_ind] > 0.5) * 2**np.arange(0, 8)))
 
-events = {i: (value, f"{value:08b}") for i, value in enumerate(event_values)}
-ind = 535549
-time = 446.29083333333335
+events = np.array([(on_ind, 0, value) for on_ind, value in zip(on_inds, event_values)])
 
 
+# events = {i: (value, f"{value:08b}") for i, value in enumerate(event_values)}
+# ind = 535549
+# time = 446.29083333333335
 
+event_id = {
+    1: 'start_trial_1',  # thumb
+    2: 'start_trial_2',  # index
+    3: 'start_trial_3',  # middle
+    4: 'start_trial_4',  # ring
+    5: 'start_trial_5',  # pinky
+    7: 'stop_trial',
+    8: 'press_1',  # buttonpress thumb
+    16: 'press_2',  # buttonpress index
+    32: 'press_3',  # buttonpress middle
+    64: 'press_4',   # buttonpress ring
+    128: 'press_5',  # buttonpress pinky
+    255: 'experiment_marker',
+}
+
+event_id = {val: key for key, val in event_id.items()}
+
+raw.plot(events=events, event_id=event_id, block=True)
 #
 # import matplotlib.pyplot as plt
 # plt.plot(data_stim_conv[:])
 # plt.show(block=True)
 ##
-trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we consider more than 2 V,
-# it is a trigger
-trig_ID, on_inds = np.where(np.diff(trig_data, axis=1) == 1)
-if len(trig_ID) > 0:
-    events = np.concatenate(
-        [
-            np.expand_dims(on_inds, axis=1) + 1,
-            np.expand_dims(np.zeros(np.shape(on_inds)), axis=1),  # Could be duration
-            np.expand_dims(trig_ID, axis=1) + 1,
-        ],
-        axis=1,
-    ).astype(np.int64)
+# trig_data = 1 * np.array(data[stm_misc_chans, :] > 2)  # If we consider more than 2 V,
+# # it is a trigger
+# trig_ID, on_inds = np.where(np.diff(trig_data, axis=1) == 1)
+# if len(trig_ID) > 0:
+#     events = np.concatenate(
+#         [
+#             np.expand_dims(on_inds, axis=1) + 1,
+#             np.expand_dims(np.zeros(np.shape(on_inds)), axis=1),  # Could be duration
+#             np.expand_dims(trig_ID, axis=1) + 1,
+#         ],
+#         axis=1,
+#     ).astype(np.int64)
 
 #%% Digitisation and montage
 #
