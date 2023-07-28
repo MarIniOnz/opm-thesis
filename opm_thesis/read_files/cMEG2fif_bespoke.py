@@ -212,18 +212,18 @@ def get_data_mne(
     )
 
     events_id = {
-        "start_trial_1": 1,
-        "start_trial_2": 2,
-        "start_trial_3": 3,
-        "start_trial_4": 4,
-        "start_trial_5": 5,
-        "stop_trial": 7,
-        "press_1": 8,
-        "press_2": 16,
-        "press_3": 32,
-        "press_4": 64,
-        "press_5": 128,
-        "experiment_marker": 255,
+        1: "cue_1",
+        2: "cue_2",
+        3: "cue_3",
+        4: "cue_4",
+        5: "cue_5",
+        7: "end_trial",
+        8: "press_1",
+        16: "press_2",
+        32: "press_3",
+        64: "press_4",
+        128: "press_5",
+        255: "experiment_marker",
     }
 
     # #%% Digitisation and montage
