@@ -97,7 +97,7 @@ class Preprocessing:
             cue_ids = np.arange(1, 6)
             epochs_params["preload"] = True
             epochs_params["event_id"] = [2 ** (i + 2) for i in cue_ids]
-            epochs_params["tmin"], epochs_params["tmax"] = (-1.0, 1.0)
+            epochs_params["tmin"], epochs_params["tmax"] = (-2.0, 2.0)
 
             time_calculation = None
             if time_calculation == "avg":
