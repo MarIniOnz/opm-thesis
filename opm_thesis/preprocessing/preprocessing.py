@@ -22,7 +22,7 @@ class Preprocessing:
             events, event_id
         )
         self.epochs = self.create_epochs(epochs_params)
-        artifact_trials, self.epochs = self.remove_artifacts()
+        artifact_trials = self.remove_artifacts()
         self.wrong_trials.extend(artifact_trials)
 
         # self.data = self.signal_space_separation(signal_sep_params)
@@ -137,9 +137,8 @@ class Preprocessing:
         """
 
         artifact_trials = []
-        data = self.raw
 
-        return artifact_trials, data
+        return artifact_trials
 
     def normalize_data(self):
         pass
