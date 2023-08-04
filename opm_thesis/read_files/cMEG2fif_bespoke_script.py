@@ -196,13 +196,13 @@ for on_ind in on_inds:
 
 events = np.array([(on_ind, 0, value) for on_ind, value in zip(on_inds, event_values)])
 
-events_id = {
-    "start_trial_1": 1,
-    "start_trial_2": 2,
-    "start_trial_3": 3,
-    "start_trial_4": 4,
-    "start_trial_5": 5,
-    "stop_trial": 7,
+event_id = {
+    "cue_1": 1,
+    "cue_2": 2,
+    "cue_3": 3,
+    "cue_4": 4,
+    "cue_5": 5,
+    "end_trial": 7,
     "press_1": 8,
     "press_2": 16,
     "press_3": 32,
@@ -211,7 +211,7 @@ events_id = {
     "experiment_marker": 255,
 }
 
-raw.plot(events=events, event_id=events_id, block=True)
+raw.plot(events=events, event_id=event_id, block=True)
 
 # %% Digitisation and montage
 #

@@ -1,4 +1,5 @@
 appdirs==1.4.3
+autoreject==0.4.2
 ifaddr==0.1.7
 jupyter-client==7.3.4
 jupyter-core==4.11.1

@@ -34,8 +34,8 @@ def get_data_mne(
     :type day: str
     :param acq_time: The time of the scan.
     :type acq_time: str
-    :return: The MNE raw object and the events.
-    :rtype: mne.io.RawArray, np.ndarray
+    :return: The MNE raw object, the events and dictionary of event ids.
+    :rtype: Tuple[mne.io.RawArray, np.ndarray, dict]
     """
 
     #%% configure subjects directory
@@ -211,19 +211,20 @@ def get_data_mne(
         [(on_ind, 0, value) for on_ind, value in zip(on_inds, event_values)]
     )
 
-    events_id = {
-        1: "cue_1",
-        2: "cue_2",
-        3: "cue_3",
-        4: "cue_4",
-        5: "cue_5",
-        7: "end_trial",
-        8: "press_1",
-        16: "press_2",
-        32: "press_3",
-        64: "press_4",
-        128: "press_5",
-        255: "experiment_marker",
+    # Define the event_id dictionary with swapped keys and values
+    event_id = {
+        "cue_1": 1,
+        "cue_2": 2,
+        "cue_3": 3,
+        "cue_4": 4,
+        "cue_5": 5,
+        "end_trial": 7,
+        "press_1": 8,
+        "press_2": 16,
+        "press_3": 32,
+        "press_4": 64,
+        "press_5": 128,
+        "experiment_marker": 255,
     }
 
     # #%% Digitisation and montage
@@ -240,4 +241,4 @@ def get_data_mne(
     # mtg = mne.channels.make_dig_montage(ch_pos=ch_pos)
     # raw.set_montage(mtg)  # TODO: problems setting the montage
 
-    return raw, events, events_id
+    return raw, events, event_id
