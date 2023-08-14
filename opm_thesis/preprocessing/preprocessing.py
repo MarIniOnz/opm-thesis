@@ -1,12 +1,13 @@
 import mne
 import numpy as np
 from typing import Tuple
+from mne.io import RawArray
 
 
 class Preprocessing:
     def __init__(
         self,
-        raw,
+        raw: RawArray,
         events: np.ndarray,
         event_id: dict,
         filter_params: dict = {},
@@ -19,24 +20,26 @@ class Preprocessing:
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
         self.samp_freq = raw.info["sfreq"]
 
-        self.raw = self.apply_filters(filter_params)
+        self.raw = self.apply_filters(self.raw, filter_params)
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
             events, event_id
         )
-        self.epochs = self.create_epochs(epochs_params)
+        self.epochs = self.create_epochs(self.raw, **epochs_params)
         artifact_trials = self.remove_artifacts()
         self.wrong_trials.extend(artifact_trials)
 
         # self.data = self.signal_space_separation(signal_sep_params)
         # self.data = self.normalize_data()
 
-    def apply_filters(self, filter_params: dict):
+    def apply_filters(self, raw: RawArray, filter_params: dict):
         """Apply filters to raw data.
 
+        :param raw: Raw data
+        :type raw: RawArray
         :param filter_params: Parameters for filtering
         :type filter_params: dict
         :return: Filtered raw data
-        :rtype: mne.io.Raw
+        :rtype: RawArray
         """
         default_params = dict(
             {"l_freq": 0.01, "h_freq": 330, "fir_design": "firwin", "phase": "zero"}
@@ -44,9 +47,9 @@ class Preprocessing:
         default_params.update(filter_params)
 
         notch_freq = 50
-        raw = self.raw.notch_filter(freqs=notch_freq, fir_design="firwin")
+        raw = raw.copy().notch_filter(freqs=notch_freq, fir_design="firwin")
 
-        return raw.filter(**default_params)
+        return raw.copy().filter(**default_params)
 
     def preprocess_events(
         self, events: np.ndarray, event_id: dict
@@ -103,9 +106,11 @@ class Preprocessing:
 
         return events, event_id, wrong_previous_trial
 
-    def create_epochs(self, epochs_params: dict):
+    def create_epochs(self, raw: RawArray, **default_params):
         """Create epochs from raw data.
 
+        :param raw: Raw data
+        :type raw: RawArray
         :param epochs_params: Parameters for epoch creation
         :type epochs_params: dict
         :return: Epochs object
@@ -124,11 +129,11 @@ class Preprocessing:
                 cue_ids=cue_ids
             )
         elif time_calculation == "max":
-            epochs_params["tmin"], epochs_params["tmax"] = self.calculate_max_times(
+            default_params["tmin"], default_params["tmax"] = self.calculate_max_times(
                 cue_ids=cue_ids
             )
 
-        default_params.update(epochs_params)
+        default_params.update(default_params)
 
         event_id_interest = {
             name: code

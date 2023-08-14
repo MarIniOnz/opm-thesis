@@ -1,3 +1,4 @@
+import mne
 import pickle
 import numpy as np
 from sklearn import svm
@@ -10,12 +11,18 @@ data_save = (
 with open(data_save + "\\all_epochs.pkl", "rb") as f:
     epochs = pickle.load(f)
 
-x = epochs.get_data().reshape(epochs.get_data().shape[0], -1)
+picks = mne.pick_types(epochs.info, meg=True, exclude="bads")
+
+# Extract the epoch data for the selected channels
+epoch_data = epochs.get_data()[:, picks]
+
+# Reshape the data
+x = epoch_data.reshape(epoch_data.shape[0], -1)
 y = (np.log2(epochs.events[:, 2]) - 2).astype(int)
 
 # Split the data into training and testing sets
 x_train, x_test, y_train, y_test = train_test_split(
-    x, y, test_size=0.3, random_state=50
+    x, y, test_size=0.2, random_state=50
 )
 
 # Instantiate the SVM classifier
