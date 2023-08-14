@@ -9,15 +9,17 @@ class Preprocessing:
         raw,
         events: np.ndarray,
         event_id: dict,
-        epochs_params: dict = None,
-        signal_sep_params: dict = None,
-        artifact_params: dict = None,
-        segmentation_params: dict = None,
+        filter_params: dict = {},
+        epochs_params: dict = {},
+        signal_sep_params: dict = {},
+        artifact_params: dict = {},
+        segmentation_params: dict = {},
     ) -> None:
         self.raw = raw
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
         self.samp_freq = raw.info["sfreq"]
 
+        self.raw = self.apply_filters(filter_params)
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
             events, event_id
         )
@@ -27,6 +29,24 @@ class Preprocessing:
 
         # self.data = self.signal_space_separation(signal_sep_params)
         # self.data = self.normalize_data()
+
+    def apply_filters(self, filter_params: dict):
+        """Apply filters to raw data.
+
+        :param filter_params: Parameters for filtering
+        :type filter_params: dict
+        :return: Filtered raw data
+        :rtype: mne.io.Raw
+        """
+        default_params = dict(
+            {"l_freq": 0.01, "h_freq": 330, "fir_design": "firwin", "phase": "zero"}
+        )
+        default_params.update(filter_params)
+
+        notch_freq = 50
+        raw = self.raw.notch_filter(freqs=notch_freq, fir_design="firwin")
+
+        return raw.filter(**default_params)
 
     def preprocess_events(
         self, events: np.ndarray, event_id: dict
@@ -91,35 +111,36 @@ class Preprocessing:
         :return: Epochs object
         :rtype: mne.Epochs
         """
+        # Setting default parameters
+        default_params = dict()
+        cue_ids = np.arange(1, 6)
+        default_params["preload"] = True
+        default_params["event_id"] = [2 ** (i + 2) for i in cue_ids]
+        default_params["tmin"], default_params["tmax"] = (-2.0, 2.0)
 
-        if epochs_params is None:
-            epochs_params = dict()
-            cue_ids = np.arange(1, 6)
-            epochs_params["preload"] = True
-            epochs_params["event_id"] = [2 ** (i + 2) for i in cue_ids]
-            epochs_params["tmin"], epochs_params["tmax"] = (-2.0, 2.0)
+        time_calculation = None
+        if time_calculation == "avg":
+            default_params["tmin"], default_params["tmax"] = self.calculate_avg_times(
+                cue_ids=cue_ids
+            )
+        elif time_calculation == "max":
+            epochs_params["tmin"], epochs_params["tmax"] = self.calculate_max_times(
+                cue_ids=cue_ids
+            )
 
-            time_calculation = None
-            if time_calculation == "avg":
-                epochs_params["tmin"], epochs_params["tmax"] = self.calculate_avg_times(
-                    cue_ids=cue_ids
-                )
-            elif time_calculation == "max":
-                epochs_params["tmin"], epochs_params["tmax"] = self.calculate_max_times(
-                    cue_ids=cue_ids
-                )
+        default_params.update(epochs_params)
 
         event_id_interest = {
             name: code
             for name, code in self.event_id.items()
-            if code in epochs_params["event_id"]
+            if code in default_params["event_id"]
         }
-        epochs_params["event_id"] = event_id_interest
+        default_params["event_id"] = event_id_interest
 
         return mne.Epochs(
             self.raw,
             events=self.events,
-            **epochs_params,
+            **default_params,
         )
 
     def signal_space_separation(self, signal_sep_params: dict = None):
