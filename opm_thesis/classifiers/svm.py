@@ -8,32 +8,35 @@ from sklearn.model_selection import train_test_split
 data_save = (
     r"C:\Users\user\Desktop\MasterThesis\opm-thesis\data\data_nottingham_preprocessed"
 )
-with open(data_save + "\\all_epochs.pkl", "rb") as f:
-    epochs = pickle.load(f)
+frequency_bands = ["low_gamma"]
 
-picks = mne.pick_types(epochs.info, meg=True, exclude="bads")
+for frequency_band in frequency_bands:
+    with open(data_save + "\\hilbert_" + frequency_band + "_all_epochs.pkl", "rb") as f:
+        epochs = pickle.load(f)
 
-# Extract the epoch data for the selected channels
-epoch_data = epochs.get_data()[:, picks]
+    picks = mne.pick_types(epochs.info, meg=True, exclude="bads")
 
-# Reshape the data
-x = epoch_data.reshape(epoch_data.shape[0], -1)
-y = (np.log2(epochs.events[:, 2]) - 2).astype(int)
+    # Extract the epoch data for the selected channels
+    epoch_data = epochs.get_data()[:, picks]
 
-# Split the data into training and testing sets
-x_train, x_test, y_train, y_test = train_test_split(
-    x, y, test_size=0.2, random_state=50
-)
+    # Reshape the data
+    x = epoch_data.reshape(epoch_data.shape[0], -1)
+    y = (np.log2(epochs.events[:, 2]) - 2).astype(int)
 
-# Instantiate the SVM classifier
-svm_classifier = svm.SVC()
+    # Split the data into training and testing sets
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=0.2, random_state=50
+    )
 
-# Train the SVM classifier
-svm_classifier.fit(x_train, y_train)
+    # Instantiate the SVM classifier
+    svm_classifier = svm.SVC()
 
-# Predict labels on the test set
-predicted_labels = svm_classifier.predict(x_test)
+    # Train the SVM classifier
+    svm_classifier.fit(x_train, y_train)
 
-# Calculate accuracy
-accuracy = accuracy_score(y_test, predicted_labels)
-print(f"SVM Test Accuracy: {accuracy:.4f}")
+    # Predict labels on the test set
+    predicted_labels = svm_classifier.predict(x_test)
+
+    # Calculate accuracy
+    accuracy = accuracy_score(y_test, predicted_labels)
+    print(frequency_band + f" SVM Test Accuracy: {accuracy:.4f}")

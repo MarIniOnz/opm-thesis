@@ -11,6 +11,7 @@ class Preprocessing:
         events: np.ndarray,
         event_id: dict,
         filter_params: dict = {},
+        notch_filter: bool = True,
         epochs_params: dict = {},
         signal_sep_params: dict = {},
         artifact_params: dict = {},
@@ -20,7 +21,9 @@ class Preprocessing:
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
         self.samp_freq = raw.info["sfreq"]
 
-        self.raw = self.apply_filters(self.raw, filter_params)
+        self.raw = self.apply_filters(
+            self.raw, filter_params=filter_params, notch_filter=notch_filter
+        )
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
             events, event_id
         )
@@ -31,13 +34,15 @@ class Preprocessing:
         # self.data = self.signal_space_separation(signal_sep_params)
         # self.data = self.normalize_data()
 
-    def apply_filters(self, raw: RawArray, filter_params: dict):
+    def apply_filters(self, raw: RawArray, filter_params: dict, notch_filter=True):
         """Apply filters to raw data.
 
         :param raw: Raw data
         :type raw: RawArray
         :param filter_params: Parameters for filtering
         :type filter_params: dict
+        :param notch_filter: Whether to apply notch filter, defaults to True
+        :type notch_filter: bool, optional
         :return: Filtered raw data
         :rtype: RawArray
         """
@@ -111,8 +116,8 @@ class Preprocessing:
 
         :param raw: Raw data
         :type raw: RawArray
-        :param epochs_params: Parameters for epoch creation
-        :type epochs_params: dict
+        :param default_params: Parameters for epoch creation
+        :type default_params: dict
         :return: Epochs object
         :rtype: mne.Epochs
         """
