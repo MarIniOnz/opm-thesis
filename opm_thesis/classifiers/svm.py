@@ -5,10 +5,17 @@ from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-data_save = (
-    r"C:\Users\user\Desktop\MasterThesis\opm-thesis\data\data_nottingham_preprocessed"
-)
-frequency_bands = ["low_gamma"]
+data_save = r"C:\Users\user\Desktop\MasterThesis\opm-thesis\data\data_nottingham_preprocessed\epochs"
+frequency_bands = [
+    "alpha",
+    "beta",
+    "low_gamma",
+    "low_mid_gamma",
+    "mid_gamma",
+    "high_gamma",
+    "all_gamma",
+]
+decimate = True
 
 for frequency_band in frequency_bands:
     with open(data_save + "\\hilbert_" + frequency_band + "_all_epochs.pkl", "rb") as f:
@@ -18,8 +25,9 @@ for frequency_band in frequency_bands:
 
     # Extract the epoch data for the selected channels
     epoch_data = epochs.get_data()[:, picks]
+    if decimate:
+        epoch_data = epoch_data[:, :, ::10]
 
-    # Reshape the data
     x = epoch_data.reshape(epoch_data.shape[0], -1)
     y = (np.log2(epochs.events[:, 2]) - 2).astype(int)
 
@@ -39,4 +47,9 @@ for frequency_band in frequency_bands:
 
     # Calculate accuracy
     accuracy = accuracy_score(y_test, predicted_labels)
-    print(frequency_band + f" SVM Test Accuracy: {accuracy:.4f}")
+    print(
+        frequency_band
+        + " "
+        + str(int(decimate))
+        + f" SVM Test Accuracy: {accuracy:.4f}"
+    )
