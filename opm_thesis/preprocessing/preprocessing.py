@@ -52,7 +52,8 @@ class Preprocessing:
         default_params.update(filter_params)
 
         notch_freq = 50
-        raw = raw.copy().notch_filter(freqs=notch_freq, fir_design="firwin")
+        if notch_filter:
+            raw = raw.copy().notch_filter(freqs=notch_freq, fir_design="firwin")
 
         return raw.copy().filter(**default_params)
 
@@ -111,13 +112,13 @@ class Preprocessing:
 
         return events, event_id, wrong_previous_trial
 
-    def create_epochs(self, raw: RawArray, **default_params):
+    def create_epochs(self, raw: RawArray, **epochs_params):
         """Create epochs from raw data.
 
         :param raw: Raw data
         :type raw: RawArray
-        :param default_params: Parameters for epoch creation
-        :type default_params: dict
+        :param epochs_params: Parameters for epoch creation
+        :type epochs_params: dict
         :return: Epochs object
         :rtype: mne.Epochs
         """
@@ -138,7 +139,7 @@ class Preprocessing:
                 cue_ids=cue_ids
             )
 
-        default_params.update(default_params)
+        default_params.update(epochs_params)
 
         event_id_interest = {
             name: code
@@ -148,7 +149,7 @@ class Preprocessing:
         default_params["event_id"] = event_id_interest
 
         return mne.Epochs(
-            self.raw,
+            raw=raw,
             events=self.events,
             **default_params,
         )

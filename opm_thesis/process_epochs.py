@@ -35,7 +35,7 @@ def save_epochs():
                 open(data_save + "\\preprocessing_" + acq_times[i] + ".pkl", "rb")
             )
             raw_filtered = preprocessing.apply_filters(
-                preprocessing.raw, frequency_params
+                preprocessing.raw, frequency_params, notch_filter=False,
             )
             picks = mne.pick_types(raw_filtered.info, meg="mag", exclude="bads")
             hilbert_transformed = raw_filtered.copy().apply_hilbert(picks=picks)
