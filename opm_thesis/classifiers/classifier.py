@@ -5,7 +5,11 @@ from torch.utils.data import Dataset
 
 # Define a simple feedforward neural network
 class Classifier(nn.Module):
-    def __init__(self, num_channels, num_time_steps, batch_size, num_classes=5):
+    """Simple classifier."""
+
+    def __init__(
+        self, num_channels: int, num_time_steps, batch_size: int = 64, num_classes=5
+    ):
         super(Classifier, self).__init__()
         self.num_channels = num_channels
         self.num_classes = num_classes

@@ -1,13 +1,13 @@
-import mne
 import pickle
+import mne
 import numpy as np
-from sklearn import svm
 from mne.decoding import Scaler
+
+from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
-
-data_save = r"C:\Users\user\Desktop\MasterThesis\opm-thesis\data\data_nottingham_preprocessed\epochs"
+DATA_SAVE = r"C:\Users\user\Desktop\MasterThesis\opm-thesis\data\data_nottingham_preprocessed\epochs"
 frequency_bands = [
     "alpha",
     "beta",
@@ -17,10 +17,10 @@ frequency_bands = [
     "high_gamma",
     "all_gamma",
 ]
-decimate = True
+DECIMATE = True
 
 for frequency_band in frequency_bands:
-    with open(data_save + "\\hilbert_" + frequency_band + "_all_epochs.pkl", "rb") as f:
+    with open(DATA_SAVE + "\\hilbert_" + frequency_band + "_all_epochs.pkl", "rb") as f:
         epochs = pickle.load(f)
 
     picks = mne.pick_types(epochs.info, meg=True, exclude="bads")
@@ -28,7 +28,7 @@ for frequency_band in frequency_bands:
     scaler = Scaler(scalings="mean")
     epochs_data = scaler.fit_transform(np.real(epochs.get_data()))[:, picks, :]
 
-    if decimate:
+    if DECIMATE:
         epochs_data = epochs_data[:, :, ::100]
 
     x = epochs_data.reshape(epochs_data.shape[0], -1)
@@ -53,6 +53,6 @@ for frequency_band in frequency_bands:
     print(
         frequency_band
         + " "
-        + str(int(decimate))
+        + str(int(DECIMATE))
         + f" SVM Test Accuracy: {accuracy:.4f}"
     )

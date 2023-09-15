@@ -1,10 +1,24 @@
+"""Preprocessing of the data.
+
+This script contains the preprocessing of the data. Takes the acquisition times and
+creates a Preprocessing object which contains the raw data, events, and epochs."""
+from typing import Tuple
 import mne
 import numpy as np
-from typing import Tuple
 from mne.io import RawArray
 
 
 class Preprocessing:
+    """Preprocessing of the data.
+
+    This class contains the preprocessing of the data. That includes:
+    - Filtering
+    - Epoching
+    - Artifact removal
+    - Signal space separation
+    - Normalization
+    """
+
     def __init__(
         self,
         raw: RawArray,
@@ -15,7 +29,6 @@ class Preprocessing:
         epochs_params: dict = {},
         signal_sep_params: dict = {},
         artifact_params: dict = {},
-        segmentation_params: dict = {},
     ) -> None:
         self.raw = raw
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
@@ -28,7 +41,7 @@ class Preprocessing:
             events, event_id
         )
         self.epochs = self.create_epochs(self.raw, **epochs_params)
-        artifact_trials = self.remove_artifacts()
+        artifact_trials = self.remove_artifacts(artifact_params=artifact_params)
         self.wrong_trials.extend(artifact_trials)
 
         # self.data = self.signal_space_separation(signal_sep_params)
@@ -155,6 +168,7 @@ class Preprocessing:
         )
 
     def signal_space_separation(self, signal_sep_params: dict = None):
+        """Apply signal space separation to the data."""
         pass
 
     def remove_artifacts(
@@ -168,11 +182,21 @@ class Preprocessing:
         :type remove_type: str, optional
         """
 
+        # from autoreject import AutoReject
+        # Use 'n_jobs=-1' to use all available CPU cores for parallel processing
+        # ar = AutoReject(n_jobs=-1, verbose='tqdm')
+        # Fit the autoreject object to the data (only MEG channels)
+        # ar.fit(epochs.copy().pick(['meg']))
+        # clean_epochs, reject_log = ar.transform(epochs.copy().pick(['meg']),
+        #      return_log=True)
+        # print(ar)
+
         artifact_trials = []
 
         return artifact_trials
 
     def normalize_data(self):
+        """Normalize the data."""
         pass
 
     def calculate_max_times(
