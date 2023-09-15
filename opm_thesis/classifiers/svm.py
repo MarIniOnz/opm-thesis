@@ -25,7 +25,7 @@ for frequency_band in frequency_bands:
 
     picks = mne.pick_types(epochs.info, meg=True, exclude="bads")
 
-    scaler = Scaler(scalings='mean')
+    scaler = Scaler(scalings="mean")
     epochs_data = scaler.fit_transform(np.real(epochs.get_data()))[:, picks, :]
 
     if decimate:
@@ -40,7 +40,7 @@ for frequency_band in frequency_bands:
     )
 
     # Instantiate the SVM classifier
-    svm_classifier = svm.SVC(C=1.0, kernel='rbf', random_state=50)
+    svm_classifier = svm.SVC(C=1.0, kernel="rbf", random_state=50)
 
     # Train the SVM classifier on scaled data
     svm_classifier.fit(x_train, y_train)
