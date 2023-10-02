@@ -8,9 +8,11 @@ results of the pairs.
 import pickle
 import mne
 import numpy as np
-from mne.decoding import CSP
-from sklearn.linear_model import LogisticRegression
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.model_selection import ShuffleSplit, cross_val_score
+
+from mne.decoding import CSP
 
 alpha = dict({"l_freq": 8, "h_freq": 12})
 beta = dict({"l_freq": 12, "h_freq": 30})
@@ -42,57 +44,52 @@ for i in range(5):
     for j in range(i + 1, 5):
         id_pairs.append([2 ** (i + 3), 2 ** (j + 3)])
 
-all_epochs = [[[] for _ in range(4)] for _ in range(len(id_pairs))]
-data_list = [[] for _ in range(len(id_pairs))]
-csp_list = [[] for _ in range(len(id_pairs))]
-labels = [[] for _ in range(len(id_pairs))]
-
-all_bads = []
-
-for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
-    for acq_idx, acq_time in enumerate(acq_times):
-        with open(DATA_DIR + "/preprocessing_" + acq_time + ".pkl", "rb") as f:
-            preprocessing = pickle.load(f)
-        raw_filtered = preprocessing.apply_filters(
-            preprocessing.raw,
-            frequency_params,
-            notch_filter=False,
-        )
-        epochs = preprocessing.create_epochs(raw_filtered)
-
-        for pair_idx, id_pair in enumerate(id_pairs):
-            indices = np.where(
-                np.logical_or(
-                    epochs.events[:, -1] == id_pair[0],
-                    epochs.events[:, -1] == id_pair[1],
-                )
-            )[0]
-            all_epochs[pair_idx][acq_idx] = epochs[indices]
-
-        all_bads.extend(epochs.info["bads"])
-
-    for k in range(len(id_pairs)):
-        for acq_idx in range(4):
-            all_epochs[k][acq_idx].info["bads"] = all_bads
-
-        concatenated = mne.concatenate_epochs(all_epochs[k][:])
-        picks = mne.pick_types(concatenated.info, meg=True, exclude="bads")
-        data_epochs = concatenated.get_data()[:, picks, :]
-
-        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
-        data_csp = csp.fit_transform(data_epochs, concatenated.events[:, -1])
-
-        labels[k].append(concatenated.events[:, -1])
-        data_list[k].append(data_csp)
-        csp_list[k].append(csp)
+EPOCHS_PATH = DATA_DIR + "/all_epochs_filtered.pkl"
+with open(EPOCHS_PATH, "rb") as f:
+    epochs = pickle.load(f)
 
 total_scores = {}
-for k, id_pair in enumerate(id_pairs):
-    data_concat = np.concatenate(data_list[k])
-    labels_concat = np.concatenate(labels[k])
+use_half = True
 
-    clf = LogisticRegression()
+for pair_idx, id_pair in enumerate(id_pairs):
+    labels = []
+    csp_list = []
+    data_list = []
+
+    for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
+
+        epochs_freq = epochs[key_idx]
+        indices = np.where(
+            np.logical_or(
+                epochs_freq.events[:, -1] == id_pair[0],
+                epochs_freq.events[:, -1] == id_pair[1],
+            )
+        )[0]
+        pair_epochs = epochs_freq[indices]
+
+        picks = mne.pick_types(pair_epochs.info, meg=True, exclude="bads")
+        data_epochs = pair_epochs.get_data()[:, picks, :]
+
+        # Using the inner half of the epochs (the second and third quarter) (1s)
+        if use_half:
+            quarter = data_epochs.shape[-1] // 4
+            data_epochs = data_epochs[:, :, quarter:]
+            data_epochs = data_epochs[:, :, :-quarter]
+
+        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        data_csp = csp.fit_transform(data_epochs, pair_epochs.events[:, -1])
+
+        labels.append(pair_epochs.events[:, -1])
+        data_list.append(data_csp)
+        csp_list.append(csp)
+
+    data_concat = np.concatenate(data_list)
+    labels_concat = np.concatenate(labels)
+
+    # Building classifier
+    clf = LinearDiscriminantAnalysis()
     cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+
     scores = cross_val_score(clf, data_concat, labels_concat, cv=cv, n_jobs=1)
     total_scores[f"{id_pair[0]} and {id_pair[1]}"] = scores.mean()
     print(

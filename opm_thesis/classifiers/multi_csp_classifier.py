@@ -49,6 +49,10 @@ X_test = [epochs[test_indices] for epochs in data_epochs]
 Y_train = labels[train_indices]
 Y_test = labels[test_indices]
 
+# TODO: TAKE OUT, I AM GOING TO RANDOMIZE NOW THE LABELS
+# Y_train = np.random.permutation(Y_train)
+# Y_test = np.random.permutation(Y_test)
+
 all_predictions = {}
 
 for k, id_pair in enumerate(id_pairs):
@@ -57,6 +61,8 @@ for k, id_pair in enumerate(id_pairs):
     all_features_for_test = []
 
     for freq_idx, (train_epochs, test_epochs) in enumerate(zip(X_train, X_test)):
+        # if freq_idx > 1:
+        #     break
 
         train_indices = np.where(
             np.logical_or(Y_train == id_pair[0], Y_train == id_pair[1])
@@ -96,9 +102,18 @@ for k, id_pair in enumerate(id_pairs):
 final_predictions = [-1] * len(Y_test)  # Initialize with -1 or some invalid label
 
 for idx, predictions_for_idx in all_predictions.items():
-    most_common_label = Counter(predictions_for_idx).most_common(1)[0][0]
-    final_predictions[idx] = most_common_label
+    if Counter(predictions_for_idx).most_common(1)[0][1] > 2:
+        most_common_label = Counter(predictions_for_idx).most_common(1)[0][0]
+        final_predictions[idx] = most_common_label
 
 # 5. Evaluate the final multi-class classifier
 accuracy = accuracy_score(Y_test, final_predictions)
-print(f"Final multi-class classifier accuracy: {accuracy:.3f} / Chance level: 0.2")
+
+# Shuffle the final predictions to get the chance level
+np.random.shuffle(final_predictions)
+chance_level = accuracy_score(Y_test, final_predictions)
+print(
+    f"Final multi-class classifier accuracy: {accuracy:.3f} / Chance level: {chance_level:.3f}"
+)
+
+final_predictions_total = [-1] * len(Y_test)  # Initialize with -1 or some invalid label
