@@ -7,6 +7,13 @@ import mne
 import numpy as np
 from mne.io import RawArray
 
+from opm_thesis.preprocessing.utils import (
+    get_closest_sensors,
+    create_fixed_length_events,
+    detect_bad_channels_by_zscore,
+    create_resting_epochs,
+)
+
 
 class Preprocessing:
     """Preprocessing of the data.
@@ -29,6 +36,7 @@ class Preprocessing:
         epochs_params: dict = {},
         signal_sep_params: dict = {},
         artifact_params: dict = {},
+        channels_params: dict = {},
     ) -> None:
         self.raw = raw
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
@@ -37,12 +45,18 @@ class Preprocessing:
         self.raw = self.apply_filters(
             self.raw, filter_params=filter_params, notch_filter=notch_filter
         )
+
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
             events, event_id
         )
         self.epochs = self.create_epochs(self.raw, **epochs_params)
+
         artifact_trials = self.remove_artifacts(artifact_params=artifact_params)
         self.wrong_trials.extend(artifact_trials)
+
+        self.raw_reduced, self.epochs_reduced = self.select_channels(
+            self.raw, channel_params=channels_params
+        )
 
         # self.data = self.signal_space_separation(signal_sep_params)
         # self.data = self.normalize_data()
@@ -72,7 +86,7 @@ class Preprocessing:
 
     def preprocess_events(
         self, events: np.ndarray, event_id: dict
-    ) -> Tuple[np.ndarray, dict]:
+    ) -> Tuple[np.ndarray, dict, list]:
         """Preprocess events array.
 
         Marks trials with wrong button presses or no button pressed.
@@ -87,6 +101,10 @@ class Preprocessing:
         :return: Preprocessed events array, updated event_id dictionary
         :rtype: Tuple[np.ndarray, dict]
         """
+        if events.size == 0:
+            events, events_id = create_fixed_length_events(self.raw, 2.0)
+            return events, events_id, []
+
         # Get indexes of events == 7
         idx_trials = np.where(events[:, 2] == 7)[0]
         wrong_previous_trial = []
@@ -135,8 +153,20 @@ class Preprocessing:
         :return: Epochs object
         :rtype: mne.Epochs
         """
+        if 999 in self.event_id.values():
+            return mne.Epochs(
+                raw,
+                self.events,
+                self.event_id,
+                tmin=0,
+                tmax=2.0,
+                baseline=None,
+                detrend=1,
+                preload=True,
+            )
+
         # Setting default parameters
-        default_params = dict()
+        default_params = {}
         cue_ids = np.arange(1, 6)
         default_params["preload"] = True
         default_params["event_id"] = [2 ** (i + 2) for i in cue_ids]
@@ -166,6 +196,64 @@ class Preprocessing:
             events=self.events,
             **default_params,
         )
+
+    def select_channels(
+        self, raw: RawArray, channel_params: dict = None
+    ) -> Tuple[RawArray, mne.Epochs]:
+        """Select the channels to use for the analysis.
+
+        :param raw: Raw data
+        :type raw: RawArray
+        :param channel_params: Parameters for selecting channels
+        :type channel_params: dict
+        :return: Raw data and epochs with reduced number of channels
+        :rtype: Tuple[RawArray, mne.Epochs]
+        """
+        default_params = {
+            "centre_channel": "LQ[X]",
+            "num_channels": 27,
+            "zscore_threshold": 1.5,
+        }
+        default_params.update(channel_params)
+
+        # Get the closest sensors to the centre channel
+        closest_sensors_names = get_closest_sensors(
+            raw.info,
+            centre_channel=default_params["centre_channel"],
+            num_channels=default_params["num_channels"],
+        )
+        raw_reduced = raw.copy().pick(closest_sensors_names)
+
+        bad_channel_names_X = detect_bad_channels_by_zscore(
+            raw_reduced,
+            coordinate="X",
+            zscore_threshold=default_params["zscore_threshold"],
+        )
+        bad_channel_names_Y = detect_bad_channels_by_zscore(
+            raw_reduced,
+            coordinate="Y",
+            zscore_threshold=default_params["zscore_threshold"],
+        )
+        bad_channel_names_Z = detect_bad_channels_by_zscore(
+            raw_reduced,
+            coordinate="Z",
+            zscore_threshold=default_params["zscore_threshold"],
+        )
+        closest_sensors_names = np.array(
+            [
+                name
+                for name in closest_sensors_names
+                if name not in bad_channel_names_X
+                and name not in bad_channel_names_Y
+                and name not in bad_channel_names_Z
+            ]
+        )
+
+        # Create a new raw object with the reduced number of channels and epochs
+        raw_reduced = raw.copy().pick(closest_sensors_names)
+        epochs_reduced = self.epochs.copy().pick(closest_sensors_names)
+
+        return raw_reduced, epochs_reduced
 
     def signal_space_separation(self, signal_sep_params: dict = None):
         """Apply signal space separation to the data."""
@@ -198,74 +286,3 @@ class Preprocessing:
     def normalize_data(self):
         """Normalize the data."""
         pass
-
-    def calculate_max_times(
-        self, cue_ids: np.ndarray, mult_factor: float = 1.1
-    ) -> Tuple[float, float]:
-        """Calculate the minimum and maximum time before and after the cue events.
-
-        :param cue_ids: Cue ids to consider
-        :type cue_ids: np.ndarray
-        :param mult_factor: Multiplication factor for the minimum time before the cue
-            event, defaults to 1.1
-        :type mult_factor: float, optional
-        :return: Minimum and maximum time before and after the cue events
-        :rtype: Tuple[float, float]
-        """
-        samp_freq = self.samp_freq
-        events = self.events
-
-        # All the indices where any of the cue_ids is present
-        indices = np.where(np.isin(events[:, 2], cue_ids))[0]
-
-        t_max = 1 / samp_freq
-        t_min = self.events[-1, 0] / samp_freq
-        for i in indices:
-            time_after = (events[i + 1, 0] - events[i, 0]) / samp_freq
-            if time_after > t_max:
-                t_max = time_after
-
-            time_before = (events[i, 0] - events[i - 1, 0]) / samp_freq
-            if time_before < t_min:
-                t_min = time_before
-        t_min, t_max = t_min * mult_factor, t_max * mult_factor
-        print(
-            "The times for epochs segmentation are \n"
-            f"t_min: {t_min}, t_max: {t_max} when using MaxTimes"
-        )
-        return -t_min, t_max
-
-    def calculate_avg_times(
-        self, cue_ids: np.ndarray, mult_factor: float = 1.1
-    ) -> Tuple[float, float]:
-        """Calculate the minimum and maximum time before and after the cue events using
-        the average time before and after the cue events.
-
-        :param cue_ids: Cue ids to consider
-        :type cue_ids: np.ndarray
-        :param mult_factor: Multiplication factor for the minimum time before the cue
-            event, defaults to 1.1
-        :type mult_factor: float, optional
-        :return: Minimum and maximum time before and after the cue events
-        :rtype: Tuple[float, float]
-        """
-        samp_freq = self.samp_freq
-        events = self.events
-
-        indices = np.where(np.isin(events[:, 2], cue_ids))[0]
-        time_after = []
-        time_before = []
-        for i in indices:
-            time_after.append((events[i + 1, 0] - events[i, 0]) / samp_freq)
-            time_before.append((events[i, 0] - events[i - 1, 0]) / samp_freq)
-
-        t_min, t_max = (
-            np.mean(time_before),
-            np.mean(time_after) * mult_factor + np.std(time_after),
-        )
-        print(
-            "The times for epochs segmentation are \n"
-            f"t_min: {t_min}, t_max: {t_max} when using AvgTimes"
-        )
-
-        return -t_min, t_max

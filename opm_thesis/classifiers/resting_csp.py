@@ -9,7 +9,7 @@ import pickle
 import mne
 import numpy as np
 
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from mne.decoding import CSP
 
@@ -31,16 +31,20 @@ DATA_DIR = (
 )
 
 # Define possible pairs for classification
-id_pairs = [[2**i, 2**j] for i in range(3, 8) for j in range(i + 1, 8)]
+ids = [2**i for i in range(3, 8)]
 
 EPOCHS_PATH = DATA_DIR + "/all_epochs_filtered.pkl"
 with open(EPOCHS_PATH, "rb") as f:
     epochs = pickle.load(f)
 
+RESTING_PATH = DATA_DIR + "/resting_epochs.pkl"
+with open(RESTING_PATH, "rb") as f:
+    resting_epochs = pickle.load(f)
+
 total_scores = {}
 USE_HALF = True
 
-for pair_idx, id_pair in enumerate(id_pairs):
+for pair_idx, id_compared in enumerate(ids):
     labels = []
     csp_list = []
     data_list = []
@@ -48,37 +52,44 @@ for pair_idx, id_pair in enumerate(id_pairs):
     for key, frequency_params in frequencies.items():
 
         epochs_freq = epochs[key]
-        indices = np.where(
-            np.logical_or(
-                epochs_freq.events[:, -1] == id_pair[0],
-                epochs_freq.events[:, -1] == id_pair[1],
-            )
-        )[0]
-        pair_epochs = epochs_freq[indices]
+        resting_epochs_freq = resting_epochs[key]
 
-        picks = mne.pick_types(pair_epochs.info, meg=True, exclude="bads")
-        data_epochs = pair_epochs.get_data()[:, picks, :]
+        indices = np.where(
+            epochs_freq.events[:, -1] == id_compared,
+        )[0]
+
+        id_epochs = epochs_freq[indices]
+        picks = mne.pick_types(id_epochs.info, meg=True, exclude="bads")
+
+        data_resting = resting_epochs_freq.get_data()[:, picks, :]
+        data_id = id_epochs.get_data()[:, picks, :]
 
         # Using the inner half of the epochs (the second and third quarter) (1s)
         if USE_HALF:
-            quarter = data_epochs.shape[-1] // 4
-            data_epochs = data_epochs[:, :, quarter:]
-            data_epochs = data_epochs[:, :, :-quarter]
+            quarter = data_id.shape[-1] // 4
+            data_id = data_id[:, :, quarter:]
+            data_id = data_id[:, :, :-quarter]
 
-        labels.append(pair_epochs.events[:, -1])
+        data_epochs = np.concatenate((data_resting, data_id), axis=0)
+        labels_concat = np.concatenate(
+            (
+                np.ones(data_resting.shape[0]).astype(int),
+                np.zeros(data_id.shape[0]).astype(int),
+            )
+        )
+
+        labels.append(labels_concat)
         data_list.append(data_epochs)
-
-    labels_concat = np.concatenate(labels)
 
     # Building classifier and cross-validator
     clf = LinearDiscriminantAnalysis()
-    cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+    cv = StratifiedShuffleSplit(10, test_size=0.2, random_state=42)
 
     # Initialize a list to store scores for each fold
     scores = []
 
     # Custom cross-validation loop
-    for train_idx, test_idx in cv.split(data_list[0]):
+    for train_idx, test_idx in cv.split(data_list[0], labels_concat):
         train_data_csp = []
         test_data_csp = []
 
@@ -106,6 +117,6 @@ for pair_idx, id_pair in enumerate(id_pairs):
         score = clf.score(X_test_csp, y_test)
         scores.append(score)
 
-    total_scores[f"{id_pair[0]} and {id_pair[1]}"] = np.mean(scores)
+    total_scores[f"{id_compared} and resting"] = np.mean(scores)
 
 print(total_scores)

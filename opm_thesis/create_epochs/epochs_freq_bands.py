@@ -34,7 +34,7 @@ frequencies = {
     # "all_gamma": all_gamma,
 }
 
-all_epochs = []
+all_epochs = {}
 all_bads = []
 
 for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
@@ -57,7 +57,7 @@ for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
     for acq_idx, epoch in enumerate(freq_epochs):
         epoch.info["bads"] = all_bads
 
-    all_epochs.append(mne.concatenate_epochs(freq_epochs))
+    all_epochs[key] = mne.concatenate_epochs(freq_epochs)
 
 with open(ALL_EPOCHS_PATH, "wb") as f:
     pickle.dump(all_epochs, f)
