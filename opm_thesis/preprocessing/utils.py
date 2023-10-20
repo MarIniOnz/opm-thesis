@@ -79,7 +79,10 @@ def get_closest_sensors(
 
 
 def detect_bad_channels_by_zscore(
-    raw: RawArray, coordinate: str, zscore_threshold: float = 2.0
+    raw: RawArray,
+    coordinate: str,
+    zscore_low: float = -1.5,
+    zscore_high: float = 1.5,
 ) -> List[str]:
     """
     Detect bad channels based on z-score of the channel's data.
@@ -89,9 +92,11 @@ def detect_bad_channels_by_zscore(
     :param coordinate: Coordinate to use for detecting bad channels. Should be one of
         ['X', 'Y', 'Z'].
     :type coordinate: str
-    :param zscore_threshold: Threshold for z-score to be marked as bad. Default is 2.0.
-    :type zscore_threshold: float
-
+    :param zscore_low: Lower threshold for z-score to be marked as bad. Default is
+        -1.5.
+    :type zscore_low: float
+    :param zscore_high: Upper threshold for z-score to be marked as bad. Default is
+        1.5.
     :return: List of channel names marked as bad.
     :rtype: List[str]
     """
@@ -110,8 +115,14 @@ def detect_bad_channels_by_zscore(
     # Compute z-scores for each channel
     z_scores = (ptp_values - np.mean(ptp_values)) / np.std(ptp_values)
 
-    # Detect channels with z-scores greater than the threshold
-    bad_channels = np.where(np.abs(z_scores) > zscore_threshold)[0]
+    # Detect channels with z-scores greater than the threshold and smaller than the
+    # negative threshold
+    bad_channels = np.where(
+        np.logical_or(
+            np.abs(z_scores) < zscore_low,
+            np.abs(z_scores) > zscore_high,
+        )
+    )[0]
     bad_channel_names = selected_ch_names[bad_channels].tolist()
 
     return bad_channel_names

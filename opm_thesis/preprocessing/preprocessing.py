@@ -34,9 +34,8 @@ class Preprocessing:
         filter_params: dict = {},
         notch_filter: bool = True,
         epochs_params: dict = {},
-        signal_sep_params: dict = {},
-        artifact_params: dict = {},
         channels_params: dict = {},
+        signal_sep_params: dict = {},
     ) -> None:
         self.raw = raw
         assert "sfreq" in raw.info, "Sampling frequency not found in raw.info"
@@ -49,13 +48,18 @@ class Preprocessing:
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
             events, event_id
         )
-        self.epochs = self.create_epochs(self.raw, **epochs_params)
+        self.epochs = self.create_epochs(self.raw, epochs_params)
 
-        artifact_trials = self.remove_artifacts(artifact_params=artifact_params)
-        self.wrong_trials.extend(artifact_trials)
-
-        self.raw_reduced, self.epochs_reduced = self.select_channels(
+        self.channel_names = self.select_channels(
             self.raw, channel_params=channels_params
+        )
+
+        self.raw_corrected, self.epochs_corrected = self.manual_artifact_removal(
+            raw=self.raw,
+            channel_names=self.channel_names,
+            events=self.events,
+            event_id=self.event_id,
+            epochs_params=epochs_params,
         )
 
         # self.data = self.signal_space_separation(signal_sep_params)
@@ -74,7 +78,7 @@ class Preprocessing:
         :rtype: RawArray
         """
         default_params = dict(
-            {"l_freq": 0.01, "h_freq": 330, "fir_design": "firwin", "phase": "zero"}
+            {"l_freq": 0.01, "h_freq": 120, "fir_design": "firwin", "phase": "zero"}
         )
         default_params.update(filter_params)
 
@@ -143,7 +147,7 @@ class Preprocessing:
 
         return events, event_id, wrong_previous_trial
 
-    def create_epochs(self, raw: RawArray, **epochs_params):
+    def create_epochs(self, raw: RawArray, epochs_params: dict):
         """Create epochs from raw data.
 
         :param raw: Raw data
@@ -160,8 +164,7 @@ class Preprocessing:
                 self.event_id,
                 tmin=0,
                 tmax=2.0,
-                baseline=None,
-                detrend=1,
+                baseline=(None, 1.0),
                 preload=True,
             )
 
@@ -197,22 +200,21 @@ class Preprocessing:
             **default_params,
         )
 
-    def select_channels(
-        self, raw: RawArray, channel_params: dict = None
-    ) -> Tuple[RawArray, mne.Epochs]:
+    def select_channels(self, raw: RawArray, channel_params: dict = None) -> np.ndarray:
         """Select the channels to use for the analysis.
 
         :param raw: Raw data
         :type raw: RawArray
         :param channel_params: Parameters for selecting channels
         :type channel_params: dict
-        :return: Raw data and epochs with reduced number of channels
-        :rtype: Tuple[RawArray, mne.Epochs]
+        :return: name of the channels to use
+        :rtype: np.ndarray
         """
         default_params = {
             "centre_channel": "LQ[X]",
             "num_channels": 27,
-            "zscore_threshold": 1.5,
+            "zscore_threshold_low": -1.5,
+            "zscore_threshold_highs": 1.5,
         }
         default_params.update(channel_params)
 
@@ -227,7 +229,8 @@ class Preprocessing:
         bad_channel_names_X = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="X",
-            zscore_threshold=default_params["zscore_threshold"],
+            zscore_low=default_params["zscore_threshold_low"],
+            zscore_high=default_params["zscore_threshold_high"],
         )
         bad_channel_names_Y = detect_bad_channels_by_zscore(
             raw_reduced,
@@ -249,17 +252,60 @@ class Preprocessing:
             ]
         )
 
-        # Create a new raw object with the reduced number of channels and epochs
-        raw_reduced = raw.copy().pick(closest_sensors_names)
-        epochs_reduced = self.epochs.copy().pick(closest_sensors_names)
-
-        return raw_reduced, epochs_reduced
+        return closest_sensors_names
 
     def signal_space_separation(self, signal_sep_params: dict = None):
         """Apply signal space separation to the data."""
         pass
 
-    def remove_artifacts(
+    def manual_artifact_removal(
+        self,
+        raw: RawArray,
+        channel_names: np.ndarray,
+        events: np.ndarray,
+        event_id: dict,
+        epochs_params: dict,
+    ) -> Tuple[RawArray, mne.Epochs]:
+        """Remove artifacts from the data.
+
+        :param raw: Raw data
+        :type raw: RawArray
+        :param channel_names: Names of the channels to use
+        :type channel_names: np.ndarray
+        :param events: Events array
+        :type events: np.ndarray
+        :param event_id: Dictionary with event codes as keys and event names as values
+        :type event_id: dict
+        :param epochs_params: Parameters for epoch creation
+        :type epochs_params: dict
+        :return: Raw data and epochs after artifact removal
+        :rtype: Tuple[RawArray, mne.Epochs]
+        """
+        # Take out channel_names with [Z] in their name
+        channel_names = [ch for ch in channel_names if "[Z]" not in ch]
+
+        # Get the channel indices for the specified channels
+        specified_channel_indices = [raw.ch_names.index(ch) for ch in channel_names]
+
+        # Get the channel indices for channels not in channel_names
+        remaining_channel_indices = [
+            i for i, ch in enumerate(raw.ch_names) if ch not in channel_names
+        ]
+
+        # Mark the remaining channels as bad
+        raw.info["bads"] = [raw.ch_names[i] for i in remaining_channel_indices]
+
+        # Create the custom order
+        custom_order = specified_channel_indices + remaining_channel_indices
+
+        # Plot with the custom order
+        raw.plot(block=True, events=events, event_id=event_id, order=custom_order)
+
+        epochs_corrected = self.create_epochs(raw, epochs_params)
+
+        return raw, epochs_corrected
+
+    def artifact_removal(
         self, remove_type: str = "AutoReject", artifact_params: dict = None
     ):
         """
