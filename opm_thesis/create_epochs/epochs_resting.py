@@ -7,7 +7,9 @@ from opm_thesis.preprocessing.preprocessing import Preprocessing
 DATA_DIR = r"/Users/martin.iniguez/Desktop/master_thesis/data_nottingham"
 acq_times = ["155445", "160513", "161344", "163001", "164054", "165308"]
 raw, events, events_id = get_data_mne(DATA_DIR, day="20230622", acq_time=acq_times[4])
-preprocessing = Preprocessing(raw, events, events_id)
+
+filter_params = {"method": "iir"}
+preprocessing = Preprocessing(raw, events, events_id, filter_params=filter_params)
 
 SAVE_PATH = (
     r"/Users/martin.iniguez/Desktop/master_thesis/"

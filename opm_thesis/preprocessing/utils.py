@@ -64,9 +64,14 @@ def get_closest_sensors(
     # Optionally, add the corresponding rest of the channels
     rest_coordinates = list(set(["X", "Y", "Z"]) - set([coordinate]))
     if include_xyz:
-        names_2 = [name[:-3] + rest_coordinates[0] for name in closest_sensors_names]
-        names_3 = [name[:-3] + rest_coordinates[1] for name in closest_sensors_names]
-
+        names_2 = [
+            name[:-3] + "[" + rest_coordinates[0] + "]"
+            for name in closest_sensors_names
+        ]
+        names_3 = [
+            name[:-3] + "[" + rest_coordinates[1] + "]"
+            for name in closest_sensors_names
+        ]
         return np.concatenate((closest_sensors_names, names_2, names_3))
 
     else:

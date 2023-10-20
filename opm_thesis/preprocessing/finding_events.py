@@ -17,8 +17,9 @@ for i in range(4):
     raw, events, event_id = get_data_mne(
         DATA_DIR, day="20230622", acq_time=acq_times[i]
     )
+    filter_params = {"method": "iir"}
 
-    preprocessing = Preprocessing(raw, events, event_id)
+    preprocessing = Preprocessing(raw, events, event_id, filter_params=filter_params)
     name = DATA_SAVE + "/preprocessing_" + acq_times[i] + ".pkl"
     # Save preprocessing object in data_
     with open(name, "wb") as f:
