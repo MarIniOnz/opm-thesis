@@ -235,12 +235,14 @@ class Preprocessing:
         bad_channel_names_Y = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="Y",
-            zscore_threshold=default_params["zscore_threshold"],
+            zscore_low=default_params["zscore_threshold_low"],
+            zscore_high=default_params["zscore_threshold_high"],
         )
         bad_channel_names_Z = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="Z",
-            zscore_threshold=default_params["zscore_threshold"],
+            zscore_low=default_params["zscore_threshold_low"],
+            zscore_high=default_params["zscore_threshold_high"],
         )
         closest_sensors_names = np.array(
             [
@@ -282,7 +284,7 @@ class Preprocessing:
         :rtype: Tuple[RawArray, mne.Epochs]
         """
         # Take out channel_names with [Z] in their name
-        channel_names = [ch for ch in channel_names if "[Z]" not in ch]
+        channel_names = [ch for ch in channel_names if "[Y]" not in ch]
 
         # Get the channel indices for the specified channels
         specified_channel_indices = [raw.ch_names.index(ch) for ch in channel_names]
