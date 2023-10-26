@@ -214,7 +214,7 @@ class Preprocessing:
             "centre_channel": "LQ[X]",
             "num_channels": 27,
             "zscore_threshold_low": -1.5,
-            "zscore_threshold_highs": 1.5,
+            "zscore_threshold_high": 1.5,
         }
         default_params.update(channel_params)
 

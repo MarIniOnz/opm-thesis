@@ -6,9 +6,9 @@ import pickle
 from opm_thesis.read_files.cMEG2fif_bespoke import get_data_mne
 from opm_thesis.preprocessing.preprocessing import Preprocessing
 
-DATA_DIR = r"/Users/martin.iniguez/Desktop/master_thesis/data_nottingham"
+DATA_DIR = r"/Users/martin.iniguez/Desktop/master-thesis/data_nottingham"
 DATA_SAVE = (
-    r"/Users/martin.iniguez/Desktop/master_thesis/"
+    r"/Users/martin.iniguez/Desktop/master-thesis/"
     r"opm-thesis/data/data_nottingham_preprocessed"
 )
 acq_times = ["155445", "160513", "161344", "163001", "164054", "165308"]
