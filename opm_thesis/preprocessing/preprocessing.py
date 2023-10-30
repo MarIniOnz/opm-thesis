@@ -3,6 +3,7 @@
 This script contains the preprocessing of the data. Takes the acquisition times and
 creates a Preprocessing object which contains the raw data, events, and epochs."""
 from typing import Tuple
+
 import mne
 import numpy as np
 from mne.io import RawArray
@@ -11,7 +12,6 @@ from opm_thesis.preprocessing.utils import (
     get_closest_sensors,
     create_fixed_length_events,
     detect_bad_channels_by_zscore,
-    create_resting_epochs,
 )
 
 
@@ -147,7 +147,7 @@ class Preprocessing:
 
         return events, event_id, wrong_previous_trial
 
-    def create_epochs(self, raw: RawArray, epochs_params: dict):
+    def create_epochs(self, raw: RawArray, epochs_params: dict = {}):
         """Create epochs from raw data.
 
         :param raw: Raw data
@@ -174,18 +174,15 @@ class Preprocessing:
         default_params["preload"] = True
         default_params["event_id"] = [2 ** (i + 2) for i in cue_ids]
         default_params["tmin"], default_params["tmax"] = (-2.0, 2.0)
-
-        time_calculation = None
-        if time_calculation == "avg":
-            default_params["tmin"], default_params["tmax"] = self.calculate_avg_times(
-                cue_ids=cue_ids
-            )
-        elif time_calculation == "max":
-            default_params["tmin"], default_params["tmax"] = self.calculate_max_times(
-                cue_ids=cue_ids
-            )
-
         default_params.update(epochs_params)
+
+        time_calculation = "avg"
+        if time_calculation == "avg":
+            tmin = default_params["tmin"]
+            default_params["baseline"] = (
+                tmin,
+                self.calculate_avg_times(cue_ids=cue_ids),
+            )
 
         event_id_interest = {
             name: code
@@ -226,19 +223,19 @@ class Preprocessing:
         )
         raw_reduced = raw.copy().pick(closest_sensors_names)
 
-        bad_channel_names_X = detect_bad_channels_by_zscore(
+        bad_x = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="X",
             zscore_low=default_params["zscore_threshold_low"],
             zscore_high=default_params["zscore_threshold_high"],
         )
-        bad_channel_names_Y = detect_bad_channels_by_zscore(
+        bad_y = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="Y",
             zscore_low=default_params["zscore_threshold_low"],
             zscore_high=default_params["zscore_threshold_high"],
         )
-        bad_channel_names_Z = detect_bad_channels_by_zscore(
+        bad_z = detect_bad_channels_by_zscore(
             raw_reduced,
             coordinate="Z",
             zscore_low=default_params["zscore_threshold_low"],
@@ -248,9 +245,7 @@ class Preprocessing:
             [
                 name
                 for name in closest_sensors_names
-                if name not in bad_channel_names_X
-                and name not in bad_channel_names_Y
-                and name not in bad_channel_names_Z
+                if name not in bad_x and name not in bad_y and name not in bad_z
             ]
         )
 
@@ -334,3 +329,33 @@ class Preprocessing:
     def normalize_data(self):
         """Normalize the data."""
         pass
+
+    def calculate_avg_times(self, cue_ids: np.ndarray) -> float:
+        """Calculate the average time between the cue and press events.
+
+        :param cue_ids: Cue ids to consider
+        :type cue_ids: np.ndarray
+        :return: Average time between cue and press events
+        :rtype: float
+        """
+        samp_freq = self.samp_freq
+        events = self.events
+
+        time_differences = []
+
+        for cue_id in cue_ids:
+            press_id = 2 ** (cue_id + 2)
+            cue_indices = np.where(events[:, 2] == cue_id)[0]
+            for cue_idx in cue_indices:
+                # Find the next event that matches the press_id
+                subsequent_events = events[cue_idx + 1 :, 2]
+                try:
+                    press_idx_rel = np.where(subsequent_events == press_id)[0][0]
+                    press_idx = cue_idx + 1 + press_idx_rel
+                    time_diff = (events[press_idx, 0] - events[cue_idx, 0]) / samp_freq
+                    time_differences.append(time_diff)
+                except IndexError:
+                    # No corresponding press event found
+                    pass
+
+        return -np.mean(time_differences)

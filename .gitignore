@@ -7,4 +7,4 @@ __pycache__
 *.pyc
 
 .idea/
-*.pkl
+data/data_nottingham_preprocessed
