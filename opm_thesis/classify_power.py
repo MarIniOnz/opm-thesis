@@ -36,6 +36,9 @@ train_data, test_data, train_labels, test_labels = train_test_split(
     data, labels, test_size=0.2, random_state=42
 )
 
+# Set the device to use
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Create PyTorch datasets and loaders
 train_dataset = MyDataset(train_data, train_labels)
 test_dataset = MyDataset(test_data, test_labels)
@@ -47,10 +50,11 @@ test_loader = DataLoader(test_dataset, batch_size=64)
 num_channels = train_data.shape[1]
 num_samples = train_data.shape[2]
 num_classes = len(np.unique(labels))
-classifier = DeepConvNet(num_channels, num_samples, num_classes)
+
+classifier = DeepConvNet(num_channels, num_samples, num_classes).to(device)
 
 # Train the classifier and evaluate it
-classifier.train(train_loader, num_epochs=100, learning_rate=1e-4)
+classifier.train(train_loader, num_epochs=1, learning_rate=1e-4)
 classifier.evaluate(test_loader)
 
 
@@ -60,9 +64,10 @@ def predict(model, data_loader):
     all_predictions = []
     with torch.no_grad():
         for batch_x, _ in data_loader:
+            batch_x = batch_x.to(device)
             outputs = model(batch_x)
             predicted = outputs.data.argmax(dim=1)
-            all_predictions.extend(predicted.numpy())
+            all_predictions.extend(predicted.cpu().numpy())
     return np.array(all_predictions)
 
 
