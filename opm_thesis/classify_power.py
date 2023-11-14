@@ -13,7 +13,7 @@ DATA_DIR = "./data/epochs"
 FILENAME = DATA_DIR + "/hilbert_mid_beta_all_epochs_decimated.pkl"
 
 # Concatenate all the data into a single array
-labels_to_use = [16, 64]
+labels_to_use = [8, 16]
 
 with open(FILENAME, "rb") as FILENAME:
     epochs = pickle.load(FILENAME)
@@ -31,13 +31,13 @@ labels = np.array(
     [label_mapping[label] for label in epochs.events[:, -1] if label in label_mapping]
 )
 
-# Split the data into training and testing sets
+# Split the data into training and testing sets with the proportions of the labels
 train_data, test_data, train_labels, test_labels = train_test_split(
-    data, labels, test_size=0.2, random_state=42
+    data, labels, test_size=0.2, stratify=labels, random_state=42
 )
 
 # Set the device to use
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
 # Create PyTorch datasets and loaders
 train_dataset = MyDataset(train_data, train_labels)
@@ -54,7 +54,7 @@ num_classes = len(np.unique(labels))
 classifier = DeepConvNet(num_channels, num_samples, num_classes).to(device)
 
 # Train the classifier and evaluate it
-classifier.train(train_loader, num_epochs=1, learning_rate=1e-4)
+classifier.train(train_loader, num_epochs=200, learning_rate=1e-4)
 classifier.evaluate(test_loader)
 
 

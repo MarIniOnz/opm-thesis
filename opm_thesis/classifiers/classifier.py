@@ -17,6 +17,12 @@ class DeepConvNet(nn.Module):
     def __init__(self, num_channels: int, num_samples: int, num_classes: int = 5):
         super(DeepConvNet, self).__init__()
 
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # If we are in cpu, check for mps
+        if device == "cpu":
+            device = "mps" if torch.backends.mps.is_available() else "cpu"
+        self.device = torch.device(device)
+
         # Temporal Convolution
         self.temporal_conv = nn.Conv2d(1, 25, (1, 10), padding=(0, 5))
 
@@ -50,12 +56,11 @@ class DeepConvNet(nn.Module):
 
         # Classification Layer
         self.fc1 = nn.Linear(
-            200 * ((num_samples // (3**4))), num_classes
+            200 * ((num_samples // (3**4)) + 1), num_classes
         )  # Size of the data based on the pooling and convolutional layers
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
-
         x = self.temporal_conv(x)
         x = self.spatial_conv(x)
         x = self.batch_norm1(x)
@@ -92,9 +97,10 @@ class DeepConvNet(nn.Module):
 
         for epoch in range(num_epochs):
             for batch_x, batch_y in train_loader:
+                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                 optimizer.zero_grad()
                 outputs = self(batch_x)
-                loss = criterion(outputs, batch_y - 1)
+                loss = criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
@@ -104,6 +110,7 @@ class DeepConvNet(nn.Module):
         total = 0
         with torch.no_grad():
             for batch_x, batch_y in test_loader:
+                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                 outputs = self(batch_x)
                 predicted = outputs.data.argmax(dim=1)
                 total += batch_y.size(0)
@@ -117,7 +124,7 @@ class MyDataset(Dataset):
     """Custom Dataset for loading OPM data."""
 
     def __init__(self, data, labels):
-        data = torch.from_numpy(data).float()
+        data = torch.from_numpy(data).type(torch.float32)
         data = data.unsqueeze(
             1
         )  # Data shape should be (n_samples, 1, n_channels, n_timesteps)
