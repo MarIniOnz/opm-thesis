@@ -17,12 +17,7 @@ class DeepConvNet(nn.Module):
     def __init__(self, num_channels: int, num_samples: int, num_classes: int = 5):
         super(DeepConvNet, self).__init__()
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        # If we are in cpu, check for mps
-        if device == "cpu":
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
-        self.device = torch.device(device)
-
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Temporal Convolution
         self.temporal_conv = nn.Conv2d(1, 25, (1, 10), padding=(0, 5))
 
@@ -116,7 +111,7 @@ class DeepConvNet(nn.Module):
                 total += batch_y.size(0)
                 correct += (predicted == batch_y).sum().item()
         accuracy = correct / total
-        print(f"Test Accuracy: {accuracy:.4f}")
+        return accuracy
 
 
 # Define a custom dataset
