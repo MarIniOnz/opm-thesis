@@ -7,7 +7,7 @@ import mne
 import numpy as np
 
 
-DATA_SAVE = "/fast/work/users/main10_c/opm-thesis/data/"
+DATA_SAVE = "./data/"
 all_bads = []
 acq_times = ["155445", "160513", "161344", "163001"]
 
@@ -38,7 +38,7 @@ for key, frequency_params in frequencies.items():
     for acq_idx, acq_time in enumerate(acq_times):
         with open(
             DATA_SAVE
-            + "data_nottingham_preprocessed/preprocessing_"
+            + "data_nottingham_preprocessed/analyzed/preprocessing_"
             + acq_time
             + ".pkl",
             "rb",
