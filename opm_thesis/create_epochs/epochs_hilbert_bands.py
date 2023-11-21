@@ -7,7 +7,7 @@ import mne
 import numpy as np
 
 
-DATA_SAVE = "./data/"
+DATA_SAVE = "/fast/work/users/main10_c/opm-thesis/data/"
 all_bads = []
 acq_times = ["155445", "160513", "161344", "163001"]
 
