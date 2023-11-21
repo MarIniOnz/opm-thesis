@@ -5,9 +5,15 @@ Hilbert transform. The epochs are saved in different files for each frequency.""
 import pickle
 import mne
 import numpy as np
+import os
 
 
-DATA_SAVE = "opm-thesis/data/"
+# Get triple parent directory of this file
+path = os.path.abspath(__file__)
+for _ in range(3):
+    path = os.path.dirname(path)
+
+DATA_SAVE = path + "/data/"
 all_bads = []
 acq_times = ["155445", "160513", "161344", "163001"]
 
