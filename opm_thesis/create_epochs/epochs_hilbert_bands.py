@@ -38,7 +38,7 @@ for key, frequency_params in frequencies.items():
     for acq_idx, acq_time in enumerate(acq_times):
         with open(
             DATA_SAVE
-            + "data_nottingham_preprocessed/analyzed/preprocessing_"
+            + "data_nottingham_preprocessed/analyzed/analyzed/preprocessing_"
             + acq_time
             + ".pkl",
             "rb",
