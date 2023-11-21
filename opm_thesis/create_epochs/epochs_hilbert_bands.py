@@ -3,15 +3,18 @@
 This script is used to create epochs in different frequency bands using the
 Hilbert transform. The epochs are saved in different files for each frequency."""
 import pickle
+import os
+import sys
+
 import mne
 import numpy as np
-import os
-
 
 # Get triple parent directory of this file
 path = os.path.abspath(__file__)
 for _ in range(3):
     path = os.path.dirname(path)
+
+sys.path.append(path)
 
 DATA_SAVE = path + "/data/"
 all_bads = []
