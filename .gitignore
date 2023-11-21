@@ -7,4 +7,4 @@ __pycache__
 *.pyc
 
 .idea/
-data/data_nottingham_preprocessed
+data/*
