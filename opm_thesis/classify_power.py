@@ -1,15 +1,16 @@
+import sys
+import os
 import pickle
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-import os
-import sys
+
 
 from opm_thesis.classifiers.classifier import DeepConvNet, MyDataset
 
 path = os.path.abspath(__file__)
-for _ in range(3):
+for _ in range(2):
     path = os.path.dirname(path)
 
 sys.path.append(path)
