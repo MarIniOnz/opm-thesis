@@ -6,14 +6,13 @@ import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
-
-from opm_thesis.classifiers.classifier import DeepConvNet, MyDataset
-
 path = os.path.abspath(__file__)
 for _ in range(1):
     path = os.path.dirname(path)
 
 sys.path.append(path)
+
+from opm_thesis.classifiers.classifier import DeepConvNet, MyDataset
 
 
 def predict(model, data_loader, device):
