@@ -3,9 +3,16 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
-from itertools import combinations
+import os
+import sys
 
 from opm_thesis.classifiers.classifier import DeepConvNet, MyDataset
+
+path = os.path.abspath(__file__)
+for _ in range(3):
+    path = os.path.dirname(path)
+
+sys.path.append(path)
 
 
 def predict(model, data_loader, device):
@@ -22,7 +29,7 @@ def predict(model, data_loader, device):
 
 # Define the path to the file
 DATA_DIR = "./data/epochs"
-FILENAME = DATA_DIR + "/hilbert_mid_beta_all_epochs_decimated.pkl"
+FILENAME = DATA_DIR + "/hilbert_alpha_all_epochs_decimated.pkl"
 
 # Generate all unique pairs of labels
 labels_to_use = [8, 16, 32, 64, 128]
@@ -69,6 +76,6 @@ classifier = DeepConvNet(num_channels, num_samples, len(labels_to_use)).to(
     device
 )  # Two classes
 
-classifier.train(train_loader, num_epochs=250, learning_rate=1e-3)
+classifier.train(train_loader, num_epochs=150, learning_rate=1e-3)
 accuracy = classifier.evaluate(test_loader)
 print(f"Accuracy for labels {labels_to_use}: {accuracy}")
