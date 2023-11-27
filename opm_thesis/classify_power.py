@@ -67,7 +67,6 @@ for train_index, test_index in kf.split(data):
     num_channels = train_data.shape[1]
     num_samples = train_data.shape[2]
     classifier = DeepConvNet(num_channels, num_samples, len(labels_to_use)).to(device)
-    # classifier = TimeFreqCNN(len(labels_to_use)).to(device)
     classifier.train_model(train_loader, test_loader, num_epochs=75, learning_rate=1e-3)
 
     # Evaluate the model
