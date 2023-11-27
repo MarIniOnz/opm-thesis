@@ -20,7 +20,6 @@ DATA_SAVE = path + "/data/"
 all_bads = []
 acq_times = ["155445", "160513", "161344", "163001"]
 
-all_data = dict({"l_freq": 0.01, "h_freq": 120})
 alpha = dict({"l_freq": 8, "h_freq": 12})
 beta = dict({"l_freq": 12.5, "h_freq": 30})
 low_gamma = dict({"l_freq": 30, "h_freq": 60})
@@ -32,21 +31,47 @@ all_gamma = dict({"l_freq": 30, "h_freq": 120})
 mid_beta = dict({"l_freq": 15, "h_freq": 22})
 
 frequencies = {
-    "all_data": all_data,
     # "alpha": alpha,
     # "beta": beta,
     # "low_gamma": low_gamma,
     # "low_mid_gamma": low_mid_gamma,
     # "mid_gamma": mid_gamma,
-    # "high_gamma": high_gamma,
+    "high_gamma": high_gamma,
     # "all_gamma": all_gamma,
     # "mid_high_gamma": mid_high_gamma,
     # "mid_beta": mid_beta,
 }
 
+
 for key, frequency_params in frequencies.items():
     preprocessed_epochs = []
     baseline = []
+    picked_channels_set = set()
+
+    for acq_idx, acq_time in enumerate(acq_times):
+        with open(
+            DATA_SAVE
+            + "data_nottingham_preprocessed/analyzed/preprocessing_"
+            + acq_time
+            + ".pkl",
+            "rb",
+        ) as f:
+            preprocessing = pickle.load(f)
+
+        picks_epochs = mne.pick_types(preprocessing.epochs.info, meg="mag")
+        picks_epochs_corrected = mne.pick_types(
+            preprocessing.epochs_corrected.info, meg="mag", exclude="bads"
+        )
+
+        # Take the difference
+        pick_diff = np.setdiff1d(picks_epochs, picks_epochs_corrected)
+        # Add new channels to the set
+        for channel in pick_diff:
+            if channel not in picked_channels_set:
+                picked_channels_set.add(channel)
+
+    # Convert the set back to a list if necessary
+    picked_channels = list(picked_channels_set)
 
     for acq_idx, acq_time in enumerate(acq_times):
         with open(
@@ -63,29 +88,28 @@ for key, frequency_params in frequencies.items():
             frequency_params,
             notch_filter=False,
         )
-        picks = mne.pick_types(raw_filtered.info, meg="mag", exclude="bads")
-        hilbert_transformed = raw_filtered.copy().apply_hilbert(picks=picks)
-        hilbert_epochs = preprocessing.create_epochs(hilbert_transformed)
+        hilbert_transformed = raw_filtered.copy().apply_hilbert(picks=picked_channels)
+        hilbert_epochs = preprocessing.create_epochs(hilbert_transformed).pick(
+            picked_channels
+        )
         baseline.append(hilbert_epochs.baseline[-1])
 
         preprocessed_epochs.append(hilbert_epochs)
-        all_bads.extend(hilbert_epochs.info["bads"])
 
     baseline = np.mean(baseline)
     for acq_idx, epoch in enumerate(preprocessed_epochs):
         epoch.apply_baseline(baseline=(-2, baseline))
         epoch.info["bads"] = all_bads
         epoch.drop_bad()
-        epoch.pick_types(meg="mag", exclude="bads")
 
     all_epochs = mne.concatenate_epochs(preprocessed_epochs)
-    file_name = DATA_SAVE + "epochs/hilbert_" + key + "_all_epochs.pkl"
+    file_name = DATA_SAVE + "epochs/bad_hilbert_" + key + "_all_epochs.pkl"
 
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)
 
     all_epochs.decimate(4)
-    file_name = DATA_SAVE + "epochs/hilbert_" + key + "_all_epochs_decimated.pkl"
+    file_name = DATA_SAVE + "epochs/bad_hilbert_" + key + "_all_epochs_decimated.pkl"
 
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)

@@ -11,3 +11,4 @@ __pycache__
 data/*
 misc_code/*
 *.csv
+nohup.out
