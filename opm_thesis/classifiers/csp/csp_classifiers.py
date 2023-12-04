@@ -16,29 +16,27 @@ from mne.decoding import CSP
 alpha = dict({"l_freq": 8, "h_freq": 12})
 beta = dict({"l_freq": 12, "h_freq": 30})
 low_gamma = dict({"l_freq": 30, "h_freq": 60})
+low_mid_gamma = dict({"l_freq": 30, "h_freq": 90})
+mid_gamma = dict({"l_freq": 60, "h_freq": 90})
 high_gamma = dict({"l_freq": 60, "h_freq": 120})
 
 frequencies = {
-    "alpha": alpha,
-    "beta": beta,
-    "low_gamma": low_gamma,
-    "high_gamma": high_gamma,
+    # "alpha": alpha,
+    # "beta": beta,
+    # "low_gamma": low_gamma,
+    # "low_mid_gamma": low_mid_gamma,
+    "mid_gamma": mid_gamma,
+    # "high_gamma": high_gamma,
 }
 
-DATA_DIR = (
-    r"/Users/martin.iniguez/Desktop/master_thesis/"
-    r"opm-thesis/data/data_nottingham_preprocessed"
-)
+DATA_DIR = "./data/epochs/freq_bands/"
 
 # Define possible pairs for classification
 id_pairs = [[2**i, 2**j] for i in range(3, 8) for j in range(i + 1, 8)]
-
-EPOCHS_PATH = DATA_DIR + "/all_epochs_filtered.pkl"
-with open(EPOCHS_PATH, "rb") as f:
-    epochs = pickle.load(f)
+id_pairs = [[16, 128]]
 
 total_scores = {}
-USE_HALF = True
+USE_HALF = False
 
 for pair_idx, id_pair in enumerate(id_pairs):
     labels = []
@@ -46,8 +44,8 @@ for pair_idx, id_pair in enumerate(id_pairs):
     data_list = []
 
     for key, frequency_params in frequencies.items():
-
-        epochs_freq = epochs[key]
+        with open(DATA_DIR + f"{key}_all_epochs_decimated.pkl", "rb") as f:
+            epochs_freq = pickle.load(f)
         indices = np.where(
             np.logical_or(
                 epochs_freq.events[:, -1] == id_pair[0],

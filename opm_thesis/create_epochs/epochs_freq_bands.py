@@ -24,11 +24,11 @@ all_gamma = dict({"l_freq": 30, "h_freq": 120})
 frequencies = {
     "alpha": alpha,
     "beta": beta,
-    # "low_gamma": low_gamma,
-    # "high_gamma": high_gamma,
-    # "low_mid_gamma": low_mid_gamma,
-    # "mid_gamma": mid_gamma,
-    # "all_gamma": all_gamma,
+    "low_gamma": low_gamma,
+    "high_gamma": high_gamma,
+    "low_mid_gamma": low_mid_gamma,
+    "mid_gamma": mid_gamma,
+    "all_gamma": all_gamma,
 }
 
 
@@ -52,19 +52,24 @@ for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
             frequency_params,
             notch_filter=False,
         )
-        picks = mne.pick_types(raw_filtered.info, meg="mag", exclude="bads")
         epochs = preprocessing.create_epochs(raw_filtered)
         freq_epochs.append(epochs)
-        baseline.append(epochs.baseline[-1])
 
-        all_bads.extend(epochs.info["bads"])
+        baseline.append(epochs.baseline[-1])
+        all_bads.extend(preprocessing.epochs.info["bads"])
 
     baseline = np.mean(baseline)
     for acq_idx, epoch in enumerate(freq_epochs):
         epoch.apply_baseline(baseline=(-2, baseline))
         epoch.info["bads"] = all_bads
         epoch.drop_bad()
-        epoch.pick_types(meg="mag", exclude="bads")
+        all_channels = epoch.ch_names
+
+        # Select channels not in all_bads
+        good_channels_epoch = [
+            channel for channel in all_channels if channel not in all_bads
+        ]
+        epoch.pick(good_channels_epoch)
 
     all_epochs = mne.concatenate_epochs(freq_epochs)
     file_name = DATA_SAVE + "epochs/freq_bands/" + key + "_all_epochs.pkl"
