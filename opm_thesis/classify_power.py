@@ -1,6 +1,4 @@
-"""Script to classify epochs using a CNN."""
-import sys
-import os
+"""Script to classify epochs using DeepConvNet."""
 import pickle
 
 import numpy as np
@@ -8,36 +6,60 @@ import torch
 from torch.utils.data import DataLoader
 from sklearn.model_selection import KFold
 
-from opm_thesis.classifiers.classifier import DeepConvNet, MyDataset
+from opm_thesis.classifiers.classifier import (
+    DeepConvNet,
+    MyDataset,
+    TimeFreqCNN,
+    VAR_CNN,
+)
 
 
-def predict(model, data_loader, device):
+def predict(model, data_loader, device_to_use):
     """Predict the classes of the data in the data loader."""
     all_predictions = []
     with torch.no_grad():
         for batch_x, _ in data_loader:
-            batch_x = batch_x.to(device)
+            batch_x = batch_x.to(device_to_use)
             outputs = model(batch_x)
             predicted = outputs.data.argmax(dim=1)
             all_predictions.extend(predicted.cpu().numpy())
     return np.array(all_predictions)
 
 
+frequencies = [
+    # "low_freq"
+    "mid_freq",
+    # "all_data",
+    # "alpha",
+    # "beta",
+    # "low_gamma",
+    # "high_gamma",
+    # "low_mid_gamma",
+    # "mid_gamma",
+    # "all_gamma",
+]
 # Define the path to the file
-DATA_DIR = "./data/epochs/freq_bands/"
-FILENAME = DATA_DIR + "beta_all_epochs_decimated.pkl"
+DATA_DIR = "./data/gestures_epochs/freq_bands_center_channels/"
+FILENAME = DATA_DIR + frequencies[0] + "_all_epochs.pkl"
 
 # Generate all unique pairs of labels
-labels_to_use = [8, 128]
+labels_to_use = [1, 2, 4]
 # label_pairs = list(combinations(labels, 2))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
 
-n_splits = 5
-kf = KFold(n_splits=n_splits, shuffle=True, random_state=0)
+NUM_SPLITS = 2
+kf = KFold(n_splits=NUM_SPLITS, shuffle=True, random_state=0)
 
 # Load data
 with open(FILENAME, "rb") as file:
     epochs = pickle.load(file)
+
+# Using only one axis
+USE_X = False
+if USE_X:
+    selected_chs = [ch for ch in epochs.ch_names if "[X]" in ch]
+    epochs = epochs.pick(selected_chs)
 
 valid_epochs_mask = np.isin(epochs.events[:, -1], labels_to_use)
 data = np.real(epochs.get_data())[valid_epochs_mask]
@@ -66,14 +88,22 @@ for train_index, test_index in kf.split(data):
     # Initialize and train the model
     num_channels = train_data.shape[1]
     num_samples = train_data.shape[2]
-    classifier = DeepConvNet(num_channels, num_samples, len(labels_to_use)).to(device)
-    classifier.train_model(train_loader, test_loader, num_epochs=75, learning_rate=1e-3)
+    CLASSIFIER = VAR_CNN(
+        num_channels, num_samples, len(labels_to_use), device, 32, 7
+    ).to(device)
+    CLASSIFIER.train_model(
+        train_loader,
+        test_loader,
+        num_epochs=1000,
+        learning_rate=1e-3,
+    )
 
     # Evaluate the model
-    accuracy = classifier.evaluate(test_loader)
+    accuracy = CLASSIFIER.evaluate(test_loader) * 100
     accuracies.append(accuracy)
-    print(f"Accuracy for fold: {accuracy}")
+    print(f"Accuracy for fold: {accuracy:.2f}")
 
 # Calculate and print the mean accuracy
 mean_accuracy = np.mean(accuracies)
-print(f"Mean accuracy over {n_splits} folds: {mean_accuracy}")
+# Print the mean accuracy rounded to 2 decimal places
+print(f"Mean accuracy: {mean_accuracy:.2f}")

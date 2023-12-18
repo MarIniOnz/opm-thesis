@@ -5,19 +5,27 @@ M., Eggensperger, K., Tangermann, M., ... & Ball, T. (2017). Deep learning
 with convolutional neural networks for EEG decoding and visualization.
 Human brain mapping, 38(11), 5391-5420.
 """
+import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from torch import optim
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 
 class DeepConvNet(nn.Module):
     """Deep Convolutional Network for OPM Classification."""
 
-    def __init__(self, num_channels: int, num_samples: int, num_classes: int = 5):
+    def __init__(
+        self,
+        num_channels: int,
+        num_samples: int,
+        num_classes: int = 5,
+        device: str = "cpu",
+    ):
         super(DeepConvNet, self).__init__()
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
         # Temporal Convolution
         self.temporal_conv = nn.Conv2d(1, 25, (1, 10), padding=(0, 5))
 
@@ -55,7 +63,14 @@ class DeepConvNet(nn.Module):
         )  # Size of the data based on the pooling and convolutional layers
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the model.
+
+        :param x: Input data of shape (n_samples, 1, n_channels, n_timesteps)
+        :type x: torch.Tensor
+        :return: Output of the model
+        :rtype: torch.Tensor
+        """
         x = self.temporal_conv(x)
         x = self.spatial_conv(x)
         x = self.batch_norm1(x)
@@ -87,8 +102,23 @@ class DeepConvNet(nn.Module):
         return x
 
     def train_model(
-        self, train_loader, test_loader, num_epochs=10, learning_rate=0.001
+        self,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        num_epochs: int = 10,
+        learning_rate: float = 0.001,
     ):
+        """Train the model.
+
+        :param train_loader: Training data loader
+        :type train_loader: DataLoader
+        :param test_loader: Test data loader
+        :type test_loader: DataLoader
+        :param num_epochs: Number of epochs to train the model, defaults to 10
+        :type num_epochs: int, optional
+        :param learning_rate: Learning rate, defaults to 0.001
+        :type learning_rate: float, optional
+        """
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -105,14 +135,19 @@ class DeepConvNet(nn.Module):
             print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
 
             # Evaluate and print test error every second epoch
-            if (epoch + 1) % 5 == 0:
+            if (epoch + 1) % 10 == 0:
                 self.eval()  # Set the model to evaluation mode
-                test_accuracy = self.evaluate(test_loader)
-                print(
-                    f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {test_accuracy:.4f}"
-                )
+                accuracy = self.evaluate(test_loader) * 100
+                print(f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {accuracy:.2f}")
 
-    def evaluate(self, test_loader):
+    def evaluate(self, test_loader: DataLoader):
+        """Evaluate the model.
+
+        :param test_loader: Test data loader
+        :type test_loader: DataLoader
+        :return: Accuracy of the model
+        :rtype: float
+        """
         correct = 0
         total = 0
         self.eval()  # Set the model to evaluation mode
@@ -130,10 +165,17 @@ class DeepConvNet(nn.Module):
 class SimplifiedDeepConvNet(DeepConvNet):
     """Simplified Deep Convolutional Network for OPM Classification."""
 
-    def __init__(self, num_channels: int, num_samples: int, num_classes: int = 5):
+    def __init__(
+        self,
+        num_channels: int,
+        num_samples: int,
+        num_classes: int = 5,
+        device: str = "cpu",
+    ):
         super(SimplifiedDeepConvNet, self).__init__(
             num_channels, num_samples, num_classes
         )
+        self.device = device
 
         # First Convolutional Block (Temporal then Spatial Convolution)
         self.conv_block1 = nn.Sequential(
@@ -158,7 +200,14 @@ class SimplifiedDeepConvNet(DeepConvNet):
         )
         self.softmax = nn.Softmax(dim=1)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the model.
+
+        :param x: Input data of shape (n_samples, 1, n_channels, n_timesteps)
+        :type x: torch.Tensor
+        :return: Output of the model
+        :rtype: torch.Tensor
+        """
         x = self.conv_block1(x)
         x = self.conv_block2(x)
         x = x.view(x.size(0), -1)  # Flatten the output
@@ -168,7 +217,16 @@ class SimplifiedDeepConvNet(DeepConvNet):
 
 
 class TimeFreqCNN(nn.Module):
-    def __init__(self, num_classes, input_size):
+    """Time-Frequency Convolutional Neural Network for OPM Classification."""
+
+    def __init__(self, num_classes: int, input_size: int):
+        """Initialize the model.
+
+        :param num_classes: Number of classes
+        :type num_classes: int
+        :param input_size: Number of time points in the input data
+        :type input_size: int
+        """
         super(TimeFreqCNN, self).__init__()
 
         # Convolutional layers
@@ -187,7 +245,7 @@ class TimeFreqCNN(nn.Module):
         # Dropout
         self.dropout = nn.Dropout(0.5)
 
-        # Calculate the size of the flattened features after convolutional and pooling layers
+        # Calculate the size of the features after convolutional and pooling layers
         self.flattened_size = 64 * (input_size // 8) * (input_size // 8)
 
         # Fully connected layers
@@ -197,7 +255,14 @@ class TimeFreqCNN(nn.Module):
         # Activation
         self.relu = nn.ReLU()
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the model.
+
+        :param x: Input data of shape (n_samples, 1, n_channels, n_timesteps)
+        :type x: torch.Tensor
+        :return: Output of the model
+        :rtype: torch.Tensor
+        """
         x = self.pool(self.relu(self.bn1(self.conv1(x))))
         x = self.pool(self.relu(self.bn2(self.conv2(x))))
         x = self.pool(self.relu(self.bn3(self.conv3(x))))
@@ -208,7 +273,21 @@ class TimeFreqCNN(nn.Module):
 
         return x
 
-    def train_model(self, train_loader, num_epochs=10, learning_rate=0.001):
+    def train_model(
+        self,
+        train_loader: DataLoader,
+        num_epochs: int = 10,
+        learning_rate: float = 0.001,
+    ):
+        """Train the model.
+
+        :param train_loader: Training data loader
+        :type train_loader: DataLoader
+        :param num_epochs: Number of epochs to train the model, defaults to 10
+        :type num_epochs: int, optional
+        :param learning_rate: Learning rate, defaults to 0.001
+        :type learning_rate: float, optional
+        """
         self.train()  # Set the model to training mode
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
@@ -226,13 +305,21 @@ class TimeFreqCNN(nn.Module):
                 running_loss += loss.item()
                 if i % 100 == 99:  # Print every 100 mini-batches
                     print(
-                        f"Epoch {epoch + 1}, Batch {i + 1}, Loss: {running_loss / 100:.4f}"
+                        f"Epoch {epoch + 1}, Batch {i + 1}, "
+                        + f"Loss: {running_loss / 100:.4f}"
                     )
                     running_loss = 0.0
 
             print(f"Epoch {epoch + 1} completed")
 
-    def evaluate(self, test_loader):
+    def evaluate(self, test_loader: DataLoader) -> float:
+        """Evaluate the model.
+
+        :param test_loader: Test data loader
+        :type test_loader: DataLoader
+        :return: Accuracy of the model (between 0 and 1)
+        :rtype: float
+        """
         self.eval()  # Set the model to evaluation mode
         correct = 0
         total = 0
@@ -247,11 +334,203 @@ class TimeFreqCNN(nn.Module):
         return accuracy
 
 
+class SpatialDeMixing(nn.Module):
+    """Spatial De-Mixing Layer for OPM Classification."""
+
+    def __init__(self, input_channels: int, output_channels: int):
+        super(SpatialDeMixing, self).__init__()
+        self.spatial_filters = nn.Linear(input_channels, output_channels, bias=False)
+
+    def forward(self, x: torch.Tensor):
+        """Forward pass of the model.
+
+        :param x: Input data of shape (batch_size, 1, n_channels, input_size)
+        :type x: torch.Tensor
+        :return: Output of the model
+        :rtype: torch.Tensor
+        """
+
+        # x should be of shape (batch_size, 1, channels, time_points)
+        # We will apply the spatial filters across the channels for each time point
+        batch_size, _, channels, time_points = x.shape
+        x = x.view(
+            batch_size * time_points, channels
+        )  # Flatten the spatial and temporal dimensions
+        x = self.spatial_filters(x)  # Apply the spatial filters
+        x = x.view(
+            batch_size, 1, -1, time_points
+        )  # Reshape to the original dimensions with new channels
+        return x
+
+
+class VAR_CNN(nn.Module):
+    """VAR-CNN for OPM Classification.
+
+    Based on the paper:
+    Adaptive neural network classifier for decoding MEG signals
+    """
+
+    def __init__(
+        self,
+        input_channels: int,
+        input_size: int,
+        num_classes: int,
+        device,
+        num_spatial_filters=32,
+        length_temporal_filter=7,
+    ):
+        super(VAR_CNN, self).__init__()
+        self.device = device
+
+        # Define the spatial de-mixing layer
+        self.spatial_demixing = SpatialDeMixing(
+            input_channels=input_channels, output_channels=num_spatial_filters
+        )  # Number of latent sources 'k'
+
+        # Define the 2D convolutional layert
+        self.conv2d = nn.Conv2d(
+            in_channels=num_spatial_filters,  # Matching output of spatial_demixing
+            out_channels=num_spatial_filters,  # Matching output of spatial_demixing
+            kernel_size=(
+                1,
+                length_temporal_filter,
+            ),  # Kernel size 'l' for the 2D convolution
+            stride=1,
+            padding=(
+                0,
+                length_temporal_filter // 2,
+            ),  # Apply padding to maintain the size of the time dimension
+        )
+
+        # Define the max pooling layer
+        # If you want to apply max pooling only to the time dimension
+        self.maxpool = nn.MaxPool2d(kernel_size=(1, 2), stride=(1, 2))
+
+        # Define the fully connected layer
+        num_inputs = self.calculate_feature_map_size(input_size, input_channels)
+        self.fc = nn.Linear(
+            in_features=num_inputs,
+            out_features=num_classes,
+        )
+
+    def calculate_feature_map_size(self, input_size: int, input_channels: int) -> int:
+        """Calculate the size of the feature map after the convolutional layers.
+
+        :param input_size: Number of time points in the input data
+        :type input_size: int
+        :param input_channels: Number of channels in the input data
+        :type input_channels: int
+        :return: Number of elements in the feature map
+        :rtype: int
+        """
+        # Simulate the forward pass up to the point before the fully connected layer
+        # to determine the correct number of input features
+        with torch.no_grad():
+            # Create a dummy tensor with the expected input shape
+            x = torch.zeros((1, 1, input_channels, input_size))
+            # Apply the spatial demixing
+            x = self.spatial_demixing(x)
+            # Permute to match the expected input shape for the conv2d layer
+            x = x.permute(0, 2, 1, 3)
+            # Apply the 2D convolution
+            x = self.conv2d(x)
+            # Apply the max pooling layer
+            x = self.maxpool(x)
+            # Flatten the output
+            return x.numel()  # Number of elements in the tensor
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass of the model.
+
+        :param x: Input data of shape (batch_size, 1, n_channels, input_size)
+        :type x: torch.Tensor
+        :return: Output of the model
+        :rtype: torch.Tensor
+        """
+        # Apply the spatial de-mixing layer
+        x = self.spatial_demixing(x)
+
+        # Reshape or add dimensions as needed to fit the conv2d input requirements
+        x = x.permute(0, 2, 1, 3)
+
+        # Apply the 2D convolution
+        x = F.relu(self.conv2d(x))
+
+        # Apply the max pooling layer
+        x = self.maxpool(x)
+
+        # Flatten the output for the dense layer
+        x = x.view(x.size(0), -1)
+
+        # Apply the fully connected layer
+        x = self.fc(x)
+
+        return x
+
+    def train_model(
+        self,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        num_epochs: int = 10,
+        learning_rate: float = 0.001,
+    ) -> None:
+        """Train the model.
+
+        :param train_loader: Training data loader
+        :type train_loader: DataLoader
+        :param test_loader: Test data loader
+        :type test_loader: DataLoader
+        :param num_epochs: Number of epochs to train the model, defaults to 10
+        :type num_epochs: int, optional
+        :param learning_rate: Learning rate, defaults to 0.001
+        :type learning_rate: float, optional
+        """
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+
+        for epoch in range(num_epochs):
+            self.train()  # Set the model to training mode
+            for batch_x, batch_y in train_loader:
+                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                optimizer.zero_grad()
+                outputs = self(batch_x)
+                loss = criterion(outputs, batch_y)
+                loss.backward()
+                optimizer.step()
+
+            # Evaluate and print test error every 100 epoch
+            if (epoch + 1) % 100 == 0:
+                self.eval()  # Set the model to evaluation mode
+                accuracy = self.evaluate(test_loader) * 100
+                print(f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {accuracy:.2f}")
+
+    def evaluate(self, test_loader: DataLoader) -> float:
+        """Evaluate the model.
+
+        :param test_loader: Test data loader
+        :type test_loader: DataLoader
+        :return: Accuracy of the model
+        :rtype: float
+        """
+        correct = 0
+        total = 0
+        self.eval()  # Set the model to evaluation mode
+        with torch.no_grad():
+            for batch_x, batch_y in test_loader:
+                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                outputs = self(batch_x)
+                predicted = outputs.data.argmax(dim=1)
+                total += batch_y.size(0)
+                correct += (predicted == batch_y).sum().item()
+        accuracy = correct / total
+        return accuracy
+
+
 # Define a custom dataset
 class MyDataset(Dataset):
     """Custom Dataset for loading OPM data."""
 
-    def __init__(self, data, labels):
+    def __init__(self, data: np.ndarray, labels: np.ndarray):
         data = torch.from_numpy(data).type(torch.float32)
         data = data.unsqueeze(
             1
