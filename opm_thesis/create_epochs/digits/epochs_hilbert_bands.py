@@ -72,7 +72,7 @@ for key, frequency_params in frequencies.items():
         pickle.dump(all_epochs, f)
 
     all_epochs.decimate(4)
-    file_name = DATA_SAVE + "digits_epochs/hilbert/" + key + "_all_epochs_decimated.pkl"
+    file_name = DATA_SAVE + "digits_epochs/hilbert_" + key + "_all_epochs_decimated.pkl"
 
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)
