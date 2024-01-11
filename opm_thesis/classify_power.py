@@ -27,11 +27,11 @@ def predict(model, data_loader, device_to_use):
 
 
 frequencies = [
+    # "all_data"
     # "low_freq"
-    "mid_freq",
-    # "all_data",
+    # "mid_freq",
     # "alpha",
-    # "beta",
+    "mid_beta",
     # "low_gamma",
     # "high_gamma",
     # "low_mid_gamma",
@@ -39,11 +39,12 @@ frequencies = [
     # "all_gamma",
 ]
 # Define the path to the file
-DATA_DIR = "./data/gestures_epochs/freq_bands_center_channels/"
+DATA_DIR = "./data/digits_epochs/hilbert/"
 FILENAME = DATA_DIR + frequencies[0] + "_all_epochs.pkl"
+# FILENAME = DATA_DIR + "all_epochs.pkl"
 
 # Generate all unique pairs of labels
-labels_to_use = [1, 2, 4]
+labels_to_use = [8, 16, 32, 64, 128]
 # label_pairs = list(combinations(labels, 2))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
@@ -95,7 +96,7 @@ for train_index, test_index in kf.split(data):
         train_loader,
         test_loader,
         num_epochs=1000,
-        learning_rate=1e-3,
+        learning_rate=1e-4,
     )
 
     # Evaluate the model

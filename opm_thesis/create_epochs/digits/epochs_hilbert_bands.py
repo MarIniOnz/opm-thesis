@@ -3,20 +3,11 @@
 This script is used to create epochs in different frequency bands using the
 Hilbert transform. The epochs are saved in different files for each frequency."""
 import pickle
-import os
-import sys
 
 import mne
 import numpy as np
 
-# Get triple parent directory of this file
-path = os.path.abspath(__file__)
-for _ in range(3):
-    path = os.path.dirname(path)
-
-sys.path.append(path)
-
-DATA_SAVE = path + "/data/"
+DATA_SAVE = "./data/"
 all_bads = []
 acq_times = ["155445", "160513", "161344", "163001"]
 
@@ -50,21 +41,17 @@ for key, frequency_params in frequencies.items():
 
     for acq_idx, acq_time in enumerate(acq_times):
         with open(
-            DATA_SAVE
-            + "data_nottingham_preprocessed/analyzed/preprocessing_"
-            + acq_time
-            + ".pkl",
+            DATA_SAVE + "digits_preprocessed/preprocessing_" + acq_time + ".pkl",
             "rb",
         ) as f:
             preprocessing = pickle.load(f)
 
         raw_filtered = preprocessing.apply_filters(
-            preprocessing.raw_corrected,
+            preprocessing.raw,
             frequency_params,
             notch_filter=False,
         )
-        picks = mne.pick_types(raw_filtered.info, meg="mag", exclude="bads")
-        hilbert_transformed = raw_filtered.copy().apply_hilbert(picks=picks)
+        hilbert_transformed = raw_filtered.copy().apply_hilbert()
         hilbert_epochs = preprocessing.create_epochs(hilbert_transformed)
         baseline.append(hilbert_epochs.baseline[-1])
 
@@ -76,16 +63,16 @@ for key, frequency_params in frequencies.items():
         epoch.apply_baseline(baseline=(-2, baseline))
         epoch.info["bads"] = all_bads
         epoch.drop_bad()
-        epoch.pick_types(meg="mag", exclude="bads")
+        epoch.pick(picks="meg", exclude="bads")
 
     all_epochs = mne.concatenate_epochs(preprocessed_epochs)
-    file_name = DATA_SAVE + "epochs/hilbert_" + key + "_all_epochs.pkl"
+    file_name = DATA_SAVE + "digits_epochs/hilbert/" + key + "_all_epochs.pkl"
 
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)
 
     all_epochs.decimate(4)
-    file_name = DATA_SAVE + "epochs/hilbert_" + key + "_all_epochs_decimated.pkl"
+    file_name = DATA_SAVE + "digits_epochs/hilbert/" + key + "_all_epochs_decimated.pkl"
 
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)
