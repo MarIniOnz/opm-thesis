@@ -219,7 +219,14 @@ class SimplifiedDeepConvNet(DeepConvNet):
 class TimeFreqCNN(nn.Module):
     """Time-Frequency Convolutional Neural Network for OPM Classification."""
 
-    def __init__(self, num_classes: int, input_size: int):
+    def __init__(
+        self,
+        num_classes: int,
+        num_channels: int,
+        num_freqs: int,
+        num_timepoints: int,
+        device: str = "cpu",
+    ):
         """Initialize the model.
 
         :param num_classes: Number of classes
@@ -228,9 +235,10 @@ class TimeFreqCNN(nn.Module):
         :type input_size: int
         """
         super(TimeFreqCNN, self).__init__()
+        self.device = device
 
         # Convolutional layers
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(num_channels, 16, kernel_size=3, stride=1, padding=1)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
         self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
 
@@ -246,7 +254,9 @@ class TimeFreqCNN(nn.Module):
         self.dropout = nn.Dropout(0.5)
 
         # Calculate the size of the features after convolutional and pooling layers
-        self.flattened_size = 64 * (input_size // 8) * (input_size // 8)
+        reduced_freqs = num_freqs // (2**3)  # Assuming 3 pooling layers
+        reduced_timepoints = num_timepoints // (2**3)  # Assuming 3 pooling layers
+        self.flattened_size = 64 * reduced_freqs * reduced_timepoints
 
         # Fully connected layers
         self.fc1 = nn.Linear(self.flattened_size, 1000)
@@ -263,7 +273,7 @@ class TimeFreqCNN(nn.Module):
         :return: Output of the model
         :rtype: torch.Tensor
         """
-        x = self.pool(self.relu(self.bn1(self.conv1(x))))
+        x = self.pool(self.relu(self.bn1(self.conv1(x.squeeze(1)))))
         x = self.pool(self.relu(self.bn2(self.conv2(x))))
         x = self.pool(self.relu(self.bn3(self.conv3(x))))
 
@@ -296,21 +306,16 @@ class TimeFreqCNN(nn.Module):
             running_loss = 0.0
             for i, (inputs, labels) in enumerate(train_loader, 0):
                 optimizer.zero_grad()
+                batch_x = inputs.to(self.device)
+                batch_y = labels.to(self.device)
 
-                outputs = self(inputs)
-                loss = criterion(outputs, labels)
+                outputs = self(batch_x)
+                loss = criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
 
                 running_loss += loss.item()
-                if i % 100 == 99:  # Print every 100 mini-batches
-                    print(
-                        f"Epoch {epoch + 1}, Batch {i + 1}, "
-                        + f"Loss: {running_loss / 100:.4f}"
-                    )
-                    running_loss = 0.0
-
-            print(f"Epoch {epoch + 1} completed")
+            print(f"Epoch {epoch + 1}, Loss: {running_loss / i:.4f}")
 
     def evaluate(self, test_loader: DataLoader) -> float:
         """Evaluate the model.
@@ -325,10 +330,13 @@ class TimeFreqCNN(nn.Module):
         total = 0
         with torch.no_grad():
             for inputs, labels in test_loader:
-                outputs = self(inputs)
+                batch_x = inputs.to(self.device)
+                batch_y = labels.to(self.device)
+                outputs = self(batch_x)
+
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                correct += (predicted == batch_y).sum().item()
 
         accuracy = correct / total
         return accuracy

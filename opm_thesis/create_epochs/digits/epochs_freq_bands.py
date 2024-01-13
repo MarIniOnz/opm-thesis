@@ -13,6 +13,8 @@ acq_times = ["155445", "160513", "161344", "163001"]
 DATA_SAVE = "./data/"
 
 all_data = dict({"l_freq": 0.01, "h_freq": 120})
+mid_freq = dict({"l_freq": 5, "h_freq": 120})
+
 alpha = dict({"l_freq": 8, "h_freq": 12})
 beta = dict({"l_freq": 12, "h_freq": 30})
 low_gamma = dict({"l_freq": 30, "h_freq": 60})
@@ -23,10 +25,11 @@ mid_gamma = dict({"l_freq": 45, "h_freq": 75})
 all_gamma = dict({"l_freq": 30, "h_freq": 120})
 
 frequencies = {
-    "all_data": all_data,
-    # "alpha": alpha,
-    # "beta": beta,
-    # "low_gamma": low_gamma,
+    # "all_data": all_data,
+    # "mid_freq": mid_freq,
+    "alpha": alpha,
+    "beta": beta,
+    "low_gamma": low_gamma,
     # "high_gamma": high_gamma,
     # "low_mid_gamma": low_mid_gamma,
     # "mid_gamma": mid_gamma,
@@ -47,7 +50,7 @@ for key_idx, (key, frequency_params) in enumerate(frequencies.items()):
             preprocessing = pickle.load(f)
 
         raw_filtered = preprocessing.apply_filters(
-            preprocessing.raw_corrected,
+            preprocessing.raw,
             frequency_params,
             notch_filter=False,
         )
