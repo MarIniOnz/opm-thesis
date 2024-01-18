@@ -27,9 +27,9 @@ optimal_beta = dict({"l_freq": 12, "h_freq": 30})
 # all_gamma = dict({"l_freq": 30, "h_freq": 120})
 
 frequencies = {
-    "alpha": alpha,
-    "beta": beta,
-    "low_gamma": low_gamma,
+    # "alpha": alpha,
+    # "beta": beta,
+    # "low_gamma": low_gamma,
     "high_gamma": high_gamma,
     # "low_mid_gamma": low_mid_gamma,
     # "mid_gamma": mid_gamma,
