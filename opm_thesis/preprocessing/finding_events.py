@@ -17,7 +17,7 @@ time_now = time.strftime("%m%d-%H%M")
 # Create the folder to save the data
 DATA_SAVE = (
     r"/Users/martin.iniguez/Desktop/master-thesis/"
-    r"opm-thesis/data/data_nottingham_preprocessed/" + time_now
+    r"opm-thesis/data/digits_preprocessed/" + time_now
 )
 mkdir(DATA_SAVE)
 

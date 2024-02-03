@@ -23,9 +23,9 @@ all_gamma = dict({"l_freq": 30, "h_freq": 120})
 mid_beta = dict({"l_freq": 15, "h_freq": 22})
 
 frequencies = {
-    "all_data": all_data,
+    # "all_data": all_data,
     # "alpha": alpha,
-    # "beta": beta,
+    "beta": beta,
     # "low_gamma": low_gamma,
     # "low_mid_gamma": low_mid_gamma,
     # "mid_gamma": mid_gamma,
@@ -41,13 +41,16 @@ for key, frequency_params in frequencies.items():
 
     for acq_idx, acq_time in enumerate(acq_times):
         with open(
-            DATA_SAVE + "digits_preprocessed/preprocessing_" + acq_time + ".pkl",
+            DATA_SAVE
+            + "digits_preprocessed/analyzed/preprocessing_"
+            + acq_time
+            + ".pkl",
             "rb",
         ) as f:
             preprocessing = pickle.load(f)
 
         raw_filtered = preprocessing.apply_filters(
-            preprocessing.raw,
+            preprocessing.raw_corrected,
             frequency_params,
             notch_filter=False,
         )
@@ -71,8 +74,8 @@ for key, frequency_params in frequencies.items():
     with open(file_name, "wb") as f:
         pickle.dump(all_epochs, f)
 
-    all_epochs.decimate(4)
-    file_name = DATA_SAVE + "digits_epochs/hilbert_" + key + "_all_epochs_decimated.pkl"
+    # all_epochs.decimate(4)
+    # file_name = DATA_SAVE + "digits_epochs/hilbert/" + key + "_all_epochs_decimated.pkl"
 
-    with open(file_name, "wb") as f:
-        pickle.dump(all_epochs, f)
+    # with open(file_name, "wb") as f:
+    #     pickle.dump(all_epochs, f)

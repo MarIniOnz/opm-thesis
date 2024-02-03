@@ -36,7 +36,6 @@ class Preprocessing:
         notch_filter: bool = True,
         epochs_params: dict = {},
         channels_params: dict = {},
-        signal_sep_params: dict = {},
     ) -> None:
         """Initialize the preprocessing object. Runs the preprocessing pipeline,
         which includes:
@@ -93,9 +92,6 @@ class Preprocessing:
             gestures=gestures,
         )
 
-        # self.data = self.signal_space_separation(signal_sep_params)
-        # self.data = self.normalize_data()
-
     def apply_filters(self, raw: RawArray, filter_params: dict, notch_filter=True):
         """Apply filters to raw data.
 
@@ -108,14 +104,12 @@ class Preprocessing:
         :return: Filtered raw data
         :rtype: RawArray
         """
-        default_params = dict(
-            {"l_freq": 0.01, "h_freq": 120, "fir_design": "firwin", "phase": "zero"}
-        )
+        default_params = dict({"l_freq": 0.01, "h_freq": 120, "phase": "zero"})
         default_params.update(filter_params)
 
         notch_freq = 50
         if notch_filter:
-            raw = raw.copy().notch_filter(freqs=notch_freq, fir_design="firwin")
+            raw = raw.copy().notch_filter(freqs=notch_freq, method="iir")
 
         return raw.copy().filter(**default_params)
 
@@ -256,52 +250,40 @@ class Preprocessing:
         :rtype: np.ndarray
         """
         default_params = {
-            "centre_channel": "LQ[X]",
-            "num_channels": 27,
             "zscore_threshold_low": -1.5,
             "zscore_threshold_high": 1.5,
         }
         default_params.update(channel_params)
-
-        # Get the closest sensors to the centre channel
-        closest_sensors_names = get_closest_sensors(
-            raw.info,
-            centre_channel=default_params["centre_channel"],
-            num_channels=default_params["num_channels"],
-        )
-        raw_reduced = raw.copy().pick(closest_sensors_names)
-
         bad_x = detect_bad_channels_by_zscore(
-            raw_reduced,
+            raw,
             coordinate="X",
             zscore_low=default_params["zscore_threshold_low"],
             zscore_high=default_params["zscore_threshold_high"],
         )
         bad_y = detect_bad_channels_by_zscore(
-            raw_reduced,
+            raw,
             coordinate="Y",
             zscore_low=default_params["zscore_threshold_low"],
             zscore_high=default_params["zscore_threshold_high"],
         )
         bad_z = detect_bad_channels_by_zscore(
-            raw_reduced,
+            raw,
             coordinate="Z",
             zscore_low=default_params["zscore_threshold_low"],
             zscore_high=default_params["zscore_threshold_high"],
         )
-        closest_sensors_names = np.array(
+
+        # Find the channels that are meg and not bad
+        good_ch_indices = mne.pick_types(raw.info, meg=True, exclude="bads")
+        good_ch_names = [raw.info["ch_names"][i] for i in good_ch_indices]
+
+        return np.array(
             [
                 name
-                for name in closest_sensors_names
+                for name in good_ch_names
                 if name not in bad_x and name not in bad_y and name not in bad_z
             ]
         )
-
-        return closest_sensors_names
-
-    def signal_space_separation(self, signal_sep_params: dict = None):
-        """Apply signal space separation to the data."""
-        pass
 
     def manual_artifact_removal(
         self,
@@ -330,9 +312,6 @@ class Preprocessing:
         :return: Raw data and epochs after artifact removal
         :rtype: Tuple[RawArray, mne.Epochs]
         """
-        # Take out channel_names with [Z] in their name
-        channel_names = [ch for ch in channel_names if "[Y]" not in ch]
-
         # Get the channel indices for the specified channels
         specified_channel_indices = [raw.ch_names.index(ch) for ch in channel_names]
 
@@ -353,34 +332,6 @@ class Preprocessing:
         epochs_corrected = self.create_epochs(raw, epochs_params, gestures=gestures)
 
         return raw, epochs_corrected
-
-    def artifact_removal(
-        self, remove_type: str = "AutoReject", artifact_params: dict = None
-    ):
-        """
-        Remove artifacts from the data.
-
-        :param remove_type: Type of artifact removal. Default: "AutoReject"
-            Options: "AutoReject", "MNE_Manual", "VarianceThreshold"
-        :type remove_type: str, optional
-        """
-
-        # from autoreject import AutoReject
-        # Use 'n_jobs=-1' to use all available CPU cores for parallel processing
-        # ar = AutoReject(n_jobs=-1, verbose='tqdm')
-        # Fit the autoreject object to the data (only MEG channels)
-        # ar.fit(epochs.copy().pick(['meg']))
-        # clean_epochs, reject_log = ar.transform(epochs.copy().pick(['meg']),
-        #      return_log=True)
-        # print(ar)
-
-        artifact_trials = []
-
-        return artifact_trials
-
-    def normalize_data(self):
-        """Normalize the data."""
-        pass
 
     def calculate_avg_times(self, cue_ids: np.ndarray) -> float:
         """Calculate the average time between the cue and press events.
