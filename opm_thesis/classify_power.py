@@ -1,4 +1,5 @@
 """Script to classify epochs using DeepConvNet."""
+
 import pickle
 
 import numpy as np
@@ -27,11 +28,12 @@ def predict(model, data_loader, device_to_use):
 
 
 frequencies = [
+    "beta",
     # "all_data"
     # "low_freq"
     # "mid_freq",
     # "alpha",
-    "mid_beta",
+    # "mid_beta",
     # "low_gamma",
     # "high_gamma",
     # "low_mid_gamma",
@@ -39,12 +41,12 @@ frequencies = [
     # "all_gamma",
 ]
 # Define the path to the file
-DATA_DIR = "./data/digits_epochs/hilbert/"
-FILENAME = DATA_DIR + frequencies[0] + "_all_epochs.pkl"
+DATA_DIR = "./data/digits_epochs/freq_bands/"
+FILENAME = DATA_DIR + frequencies[0] + "_all_epochs_decimated.pkl"
 # FILENAME = DATA_DIR + "all_epochs.pkl"
 
 # Generate all unique pairs of labels
-labels_to_use = [8, 16, 32, 64, 128]
+labels_to_use = [32, 128]
 # label_pairs = list(combinations(labels, 2))
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
@@ -60,7 +62,9 @@ with open(FILENAME, "rb") as file:
 USE_X = False
 if USE_X:
     selected_chs = [ch for ch in epochs.ch_names if "[X]" in ch]
-    epochs = epochs.pick(selected_chs)
+    epochs = epochs.pick("mag", selected_chs, type="mag")
+
+epochs = epochs.pick("mag", exclude="bads")
 
 valid_epochs_mask = np.isin(epochs.events[:, -1], labels_to_use)
 data = np.real(epochs.get_data())[valid_epochs_mask]
@@ -89,14 +93,14 @@ for train_index, test_index in kf.split(data):
     # Initialize and train the model
     num_channels = train_data.shape[1]
     num_samples = train_data.shape[2]
-    CLASSIFIER = VAR_CNN(
-        num_channels, num_samples, len(labels_to_use), device, 32, 7
-    ).to(device)
+    CLASSIFIER = DeepConvNet(num_channels, num_samples, len(labels_to_use), device).to(
+        device
+    )
     CLASSIFIER.train_model(
         train_loader,
         test_loader,
-        num_epochs=1000,
-        learning_rate=1e-4,
+        num_epochs=100,
+        learning_rate=1e-3,
     )
 
     # Evaluate the model

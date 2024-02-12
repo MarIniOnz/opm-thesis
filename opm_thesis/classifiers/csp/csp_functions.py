@@ -3,7 +3,6 @@ import warnings
 from typing import List, Tuple
 import pickle
 
-from math import exp, log
 import mne
 from mne.viz.topomap import _find_topomap_coords
 from mne.decoding import CSP
@@ -42,7 +41,7 @@ def csp_classify(
     :return: The classification score
     :rtype: float
     """
-    with open(data_dir + f"{freq}_all_epochs.pkl", "rb") as f:
+    with open(data_dir + f"/{freq}_all_epochs.pkl", "rb") as f:
         epochs = pickle.load(f)
         epochs = epochs.decimate(2)
 
@@ -55,9 +54,10 @@ def csp_classify(
 
     scores = []
     mapping = {8: 1, 16: 2, 32: 3, 64: 4, 128: 5}
-    id_pair
-    print("Computing scores for", id_pair, "in", freq, "band...", end=" ")
+    id_pair = [mapping[id] for id in id_pair]
+    # print("Computing scores for", id_pair, "in", freq, "band...", end=" ")
 
+    eigenvalues = []
     for train_idx, test_idx in cv.split(data):
         train_data_csp = []
         test_data_csp = []
@@ -65,9 +65,8 @@ def csp_classify(
         X_train, y_train = data[train_idx], labels[train_idx]
         X_test, y_test = data[test_idx], labels[test_idx]
 
-        csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False).fit(
-            X_train, y_train
-        )
+        csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
+        csp, eigenvalue = csp.fit(X_train, y_train)
         train_data_csp.append(csp.transform(X_train))
         test_data_csp.append(csp.transform(X_test))
 
@@ -77,10 +76,11 @@ def csp_classify(
         clf.fit(X_train_csp, y_train)
         score = clf.score(X_test_csp, y_test)
         scores.append(score)
+        eigenvalues.append(eigenvalue[:n_components])
 
-    score = np.mean(scores) * 100
-    print(f"Done. Average Score: {score:.2f}%")
-    return score
+    eigenvalue = np.mean(eigenvalues, axis=0)[0]
+    # print(f"Done. Average Score: {score:.2f}%, Average Eigenvalue: {eigenvalue:.2f}")
+    return np.array(scores), eigenvalues
 
 
 def plot_csp_patterns(
@@ -90,6 +90,7 @@ def plot_csp_patterns(
     num: int = None,
     dim: str = "[X]",
     n_components: int = 4,
+    sphere: float = None,
     normalize_data: bool = True,
 ) -> None:
     """Plot the CSP patterns for the given ID pair
@@ -117,7 +118,7 @@ def plot_csp_patterns(
 
     # Fit CSP
     csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
-    csp.fit(data, labels)
+    csp, eigen_values = csp.fit(data, labels)
 
     # Plot CSP patterns
     fig, axes = plt.subplots(1, n_components, figsize=(4 * n_components, 5))
@@ -134,10 +135,12 @@ def plot_csp_patterns(
                 show=False,
                 axes=axes,
                 ch_type="mag",
+                sphere=sphere,
             )
             axes.scatter(
                 *pos, color="black", s=100, label="LQ" + dim
             )  # Highlight with a red dot
+            axes.set_title(f"λ={eigen_values:.2f}")
         else:
             mne.viz.plot_topomap(
                 pattern,
@@ -145,11 +148,12 @@ def plot_csp_patterns(
                 axes=axes[i],
                 show=False,
                 ch_type="mag",
+                sphere=sphere,
             )
             axes[i].scatter(
                 *pos, color="red", s=100, label="LQ" + dim
             )  # Highlight with a red dot
-            axes[i].set_title(f"Component {i+1}")
+            axes[i].set_title(f"Component {i+1}, λ={eigen_values[i]:.2f}")
 
     plt.tight_layout()
     # Set global title for the figure

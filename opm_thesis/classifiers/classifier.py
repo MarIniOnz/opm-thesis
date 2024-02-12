@@ -5,6 +5,7 @@ M., Eggensperger, K., Tangermann, M., ... & Ball, T. (2017). Deep learning
 with convolutional neural networks for EEG decoding and visualization.
 Human brain mapping, 38(11), 5391-5420.
 """
+
 import numpy as np
 import torch
 from torch import nn
@@ -132,13 +133,13 @@ class DeepConvNet(nn.Module):
                 loss.backward()
                 optimizer.step()
 
-            print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
-
             # Evaluate and print test error every second epoch
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 20 == 0 or epoch == 0 or epoch == num_epochs - 1:
                 self.eval()  # Set the model to evaluation mode
                 accuracy = self.evaluate(test_loader) * 100
-                print(f"Epoch [{epoch+1}/{num_epochs}], Test Accuracy: {accuracy:.2f}")
+                print(
+                    f"Epoch [{epoch+1}/{num_epochs}],  Loss: {loss.item():.4f},  Test Accuracy: {accuracy:.2f}"
+                )
 
     def evaluate(self, test_loader: DataLoader):
         """Evaluate the model.
@@ -315,7 +316,9 @@ class TimeFreqCNN(nn.Module):
                 optimizer.step()
 
                 running_loss += loss.item()
-            print(f"Epoch {epoch + 1}, Loss: {running_loss / i:.4f}")
+
+            if i % 10 == 0:
+                print(f"Epoch {epoch + 1}, Loss: {running_loss / i:.4f}")
 
     def evaluate(self, test_loader: DataLoader) -> float:
         """Evaluate the model.
@@ -347,7 +350,10 @@ class SpatialDeMixing(nn.Module):
 
     def __init__(self, input_channels: int, output_channels: int):
         super(SpatialDeMixing, self).__init__()
-        self.spatial_filters = nn.Linear(input_channels, output_channels, bias=False)
+        self.output_channels = output_channels
+        self.spatial_filters = nn.Linear(
+            input_channels, self.output_channels, bias=False
+        )
 
     def forward(self, x: torch.Tensor):
         """Forward pass of the model.
@@ -360,18 +366,16 @@ class SpatialDeMixing(nn.Module):
 
         # x should be of shape (batch_size, 1, channels, time_points)
         # We will apply the spatial filters across the channels for each time point
-        batch_size, _, channels, time_points = x.shape
-        x = x.view(
-            batch_size * time_points, channels
-        )  # Flatten the spatial and temporal dimensions
+        batch_size, _, time_points = x.shape
+        x = x.view(-1, x.size(1))
         x = self.spatial_filters(x)  # Apply the spatial filters
         x = x.view(
-            batch_size, 1, -1, time_points
+            batch_size, self.output_channels, time_points
         )  # Reshape to the original dimensions with new channels
         return x
 
 
-class VAR_CNN(nn.Module):
+class LF_CNN(nn.Module):
     """VAR-CNN for OPM Classification.
 
     Based on the paper:
@@ -384,31 +388,28 @@ class VAR_CNN(nn.Module):
         input_size: int,
         num_classes: int,
         device,
-        num_spatial_filters=32,
-        length_temporal_filter=7,
     ):
-        super(VAR_CNN, self).__init__()
+        super(LF_CNN, self).__init__()
         self.device = device
+        self.num_spatial_filters = 32
+        length_temporal_filter = 7
 
         # Define the spatial de-mixing layer
         self.spatial_demixing = SpatialDeMixing(
-            input_channels=input_channels, output_channels=num_spatial_filters
+            input_channels=input_channels, output_channels=self.num_spatial_filters
         )  # Number of latent sources 'k'
 
+        # Dropout
+        self.dropout = nn.Dropout(p=0.5)
+
         # Define the 2D convolutional layert
-        self.conv2d = nn.Conv2d(
-            in_channels=num_spatial_filters,  # Matching output of spatial_demixing
-            out_channels=num_spatial_filters,  # Matching output of spatial_demixing
-            kernel_size=(
-                1,
-                length_temporal_filter,
-            ),  # Kernel size 'l' for the 2D convolution
+        self.temporal_convolution = nn.Conv1d(
+            in_channels=self.num_spatial_filters,
+            out_channels=self.num_spatial_filters,
+            kernel_size=length_temporal_filter,
             stride=1,
-            padding=(
-                0,
-                length_temporal_filter // 2,
-            ),  # Apply padding to maintain the size of the time dimension
-        )
+            padding=(length_temporal_filter - 1) // 2,
+        )  # Adjust padding to maintain size
 
         # Define the max pooling layer
         # If you want to apply max pooling only to the time dimension
@@ -435,13 +436,13 @@ class VAR_CNN(nn.Module):
         # to determine the correct number of input features
         with torch.no_grad():
             # Create a dummy tensor with the expected input shape
-            x = torch.zeros((1, 1, input_channels, input_size))
+            x = torch.zeros((1, input_channels, input_size))
+
             # Apply the spatial demixing
             x = self.spatial_demixing(x)
-            # Permute to match the expected input shape for the conv2d layer
-            x = x.permute(0, 2, 1, 3)
+
             # Apply the 2D convolution
-            x = self.conv2d(x)
+            x = self.temporal_convolution(x)
             # Apply the max pooling layer
             x = self.maxpool(x)
             # Flatten the output
@@ -457,16 +458,12 @@ class VAR_CNN(nn.Module):
         """
         # Apply the spatial de-mixing layer
         x = self.spatial_demixing(x)
-
-        # Reshape or add dimensions as needed to fit the conv2d input requirements
-        x = x.permute(0, 2, 1, 3)
-
         # Apply the 2D convolution
-        x = F.relu(self.conv2d(x))
-
+        x = F.relu(self.temporal_convolution(x))
+        # Apply dropout
+        x = self.dropout(x)
         # Apply the max pooling layer
         x = self.maxpool(x)
-
         # Flatten the output for the dense layer
         x = x.view(x.size(0), -1)
 
@@ -480,7 +477,7 @@ class VAR_CNN(nn.Module):
         train_loader: DataLoader,
         test_loader: DataLoader,
         num_epochs: int = 10,
-        learning_rate: float = 0.001,
+        learning_rate: float = 3e-4,
     ) -> None:
         """Train the model.
 
@@ -501,7 +498,7 @@ class VAR_CNN(nn.Module):
             for batch_x, batch_y in train_loader:
                 batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                 optimizer.zero_grad()
-                outputs = self(batch_x)
+                outputs = self(batch_x.squeeze())
                 loss = criterion(outputs, batch_y)
                 loss.backward()
                 optimizer.step()
@@ -526,8 +523,9 @@ class VAR_CNN(nn.Module):
         with torch.no_grad():
             for batch_x, batch_y in test_loader:
                 batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
-                outputs = self(batch_x)
-                predicted = outputs.data.argmax(dim=1)
+                outputs = self(batch_x.squeeze())
+                probabilities = F.softmax(outputs, dim=1)  # Apply softmax
+                predicted = probabilities.argmax(dim=1)
                 total += batch_y.size(0)
                 correct += (predicted == batch_y).sum().item()
         accuracy = correct / total
