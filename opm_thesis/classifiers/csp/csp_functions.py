@@ -79,7 +79,6 @@ def csp_classify(
         eigenvalues.append(eigenvalue[:n_components])
 
     eigenvalue = np.mean(eigenvalues, axis=0)[0]
-    # print(f"Done. Average Score: {score:.2f}%, Average Eigenvalue: {eigenvalue:.2f}")
     return np.array(scores), eigenvalues
 
 
@@ -123,7 +122,7 @@ def plot_csp_patterns(
     # Plot CSP patterns
     fig, axes = plt.subplots(1, n_components, figsize=(4 * n_components, 5))
 
-    pos = _find_topomap_coords(info, picks="LQ" + dim, sphere=None)[0]
+    pos = _find_topomap_coords(info, picks="LQ" + dim, sphere=sphere)[0]
 
     for i, pattern in enumerate(csp.patterns_.T):
         if i >= n_components:  # Only plot the desired number of components
@@ -188,6 +187,7 @@ def process_data(
     )[0]
     pair_epochs = epochs[indices].pick("meg", exclude="bads")
 
+    # Select the desired number of sensors that are closest to the LQ sensors (C3)
     if num is not None:
         channel_names = get_closest_sensors(epochs.info, "LQ[X]", num)
     else:
