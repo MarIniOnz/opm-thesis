@@ -121,7 +121,7 @@ def plot_csp_patterns(
 
     # Plot CSP patterns
     fig, axes = plt.subplots(1, n_components, figsize=(4 * n_components, 5))
-
+    mapping = {8: 1, 16: 2, 32: 3, 64: 4, 128: 5}
     pos = _find_topomap_coords(info, picks="LQ" + dim, sphere=sphere)[0]
 
     for i, pattern in enumerate(csp.patterns_.T):
@@ -156,11 +156,13 @@ def plot_csp_patterns(
 
     plt.tight_layout()
     # Set global title for the figure
+    id_pair = [mapping[id] for id in id_pair]
     fig.suptitle(
-        f"Frequency: {freq}, ID Pair: {id_pair}, Dimension: {dim[1]}",
+        f"Finger {id_pair[0]} vs. Finger {id_pair[1]}, Dimension: {dim[1]}",
         fontsize=16,
         y=1.02,
     )
+    return fig
 
 
 def process_data(
