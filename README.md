@@ -1,34 +1,7 @@
-# opm-thesis
+# Master Thesis on Characterization and Classification of Finger Movement-Related Brain Activity using Optically Pumped Magnetometers.
 
-## Setup
+This repository contains the publicly available code associated with the Master's thesis project by [Martin Iniguez de Onzono](https://github.com/MarIniOnz/), conducted in the Clinical Neurotechnology Lab at Charité – Universitätsmedizin Berlin. 
 
-### Installation
+Thesis supervised by Prof. Dr. med. Surjo R. Soekadar, Dr. Livia De Hoz, and [Jan Zerfowski, MSc](https://github.com/jzerfowski/).
 
-This command will create a virtuelenv and install all dependencies
 
-`make install`
-
-### Lint
-
-This command will ensure all dependencies are installed and run ruff
-
-`make lint`
-
-### Format
-
-This command will ensure all dependencies are installed and run black
-
-`make format`
-
-### Cleanup
-
-This command will delete the virtualenv
-
-`make clean`
-
-## Development
-
-- activate python environment: `source .venv/bin/activate`
-- run python script: `python <filename.py> `, e.g. `python train.py`
-- install new dependency: `pip install sklearn`
-- add new dependency to requirements.txt
