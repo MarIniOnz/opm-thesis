@@ -1,8 +1,10 @@
+"""Utils needed for reading the cMEG files from the OPM system."""
+
+from typing import Tuple, List
 import os
 import re
 import numpy as np
 import pandas as pd
-from typing import Tuple, List
 
 
 def read_old_cMEG(filename: str) -> np.ndarray:
@@ -13,7 +15,7 @@ def read_old_cMEG(filename: str) -> np.ndarray:
 
     :param filename: The filename of the file to be read.
     :type filename: str
-    :return: The data from the file. We assume it will have the shape (Nch, N_samples).
+    :return: The data from the file. We assume it will have the shape (n_ch, n_samples).
     :rtype: np.ndarray
     """
     size = os.path.getsize(filename)  # Find its byte size
@@ -22,16 +24,15 @@ def read_old_cMEG(filename: str) -> np.ndarray:
     with open(filename, "rb") as fid:
         while fid.tell() < size:
             # Read the header of the array which gives its dimensions
-            Nch = np.fromfile(fid, ">u1", sep="", count=4)
-            N_samples = np.fromfile(fid, ">u1", sep="", count=4)
+            n_ch = np.fromfile(fid, ">u1", sep="", count=4)
+            n_samples = np.fromfile(fid, ">u1", sep="", count=4)
             # Multiply by convertion array
-            dims = np.array([np.dot(array_conv, Nch), np.dot(array_conv, N_samples)])
+            dims = np.array([np.dot(array_conv, n_ch), np.dot(array_conv, n_samples)])
             # Read the array and shape it to dimensions given by header
             array = np.fromfile(fid, ">f8", sep="", count=dims.prod())
             arrays.append(array.reshape(dims))
 
         data = np.concatenate(arrays, axis=1)
-        data = data
 
     return data
 

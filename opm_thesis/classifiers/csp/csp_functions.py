@@ -55,7 +55,6 @@ def csp_classify(
     scores = []
     mapping = {8: 1, 16: 2, 32: 3, 64: 4, 128: 5}
     id_pair = [mapping[id] for id in id_pair]
-    # print("Computing scores for", id_pair, "in", freq, "band...", end=" ")
 
     eigenvalues = []
     for train_idx, test_idx in cv.split(data):
@@ -65,7 +64,7 @@ def csp_classify(
         X_train, y_train = data[train_idx], labels[train_idx]
         X_test, y_test = data[test_idx], labels[test_idx]
 
-        csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
+        csp = CSP(n_components=n_components, reg=None, norm_trace=False)
         csp, eigenvalue = csp.fit(X_train, y_train)
         train_data_csp.append(csp.transform(X_train))
         test_data_csp.append(csp.transform(X_test))
@@ -92,7 +91,7 @@ def plot_csp_patterns(
     sphere: float = None,
     normalize_data: bool = True,
 ) -> None:
-    """Plot the CSP patterns for the given ID pair
+    """Plot the CSP patterns for the given ID pair comparison.
 
     :param id_pair: The ID pair to plot
     :type id_pair: List[int]
@@ -116,7 +115,7 @@ def plot_csp_patterns(
     data, labels, info = process_data(epochs, id_pair, dim, num, normalize_data)
 
     # Fit CSP
-    csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
+    csp = CSP(n_components=n_components, reg=None, norm_trace=False)
     csp, eigen_values = csp.fit(data, labels)
 
     # Plot CSP patterns
@@ -128,26 +127,28 @@ def plot_csp_patterns(
         if i >= n_components:  # Only plot the desired number of components
             break
         if n_components == 1:
-            mne.viz.plot_topomap(
+            im, _ = mne.viz.plot_topomap(
                 pattern,
                 info,
                 show=False,
                 axes=axes,
                 ch_type="mag",
                 sphere=sphere,
+                vlim=(-0.6, 0.6),
             )
             axes.scatter(
                 *pos, color="black", s=100, label="LQ" + dim
             )  # Highlight with a red dot
             axes.set_title(f"λ={eigen_values:.2f}")
         else:
-            mne.viz.plot_topomap(
+            im, _ = mne.viz.plot_topomap(
                 pattern,
                 info,
                 axes=axes[i],
                 show=False,
                 ch_type="mag",
                 sphere=sphere,
+                vlim=(-0.6, 0.6),
             )
             axes[i].scatter(
                 *pos, color="red", s=100, label="LQ" + dim
@@ -155,6 +156,9 @@ def plot_csp_patterns(
             axes[i].set_title(f"Component {i+1}, λ={eigen_values[i]:.2f}")
 
     plt.tight_layout()
+    cbar = plt.colorbar(im, ax=axes[n_components - 1] if n_components > 1 else axes)
+    cbar.set_label("Amplitude", rotation=270)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     # Set global title for the figure
     id_pair = [mapping[id] for id in id_pair]
     fig.suptitle(

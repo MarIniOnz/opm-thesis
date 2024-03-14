@@ -1,10 +1,11 @@
 """Creating epochs for resting state data."""
+
 import pickle as pkl
 from opm_thesis.read_files.cMEG2fif_bespoke import get_data_mne
 from opm_thesis.preprocessing.preprocessing import Preprocessing
 
 
-DATA_DIR = r"/Users/martin.iniguez/Desktop/master-thesis/data_nottingham"
+DATA_DIR = "../data_nottingham/"
 acq_times = ["155445", "160513", "161344", "163001", "164054", "165308"]
 raw, events, events_id = get_data_mne(DATA_DIR, day="20230622", acq_time=acq_times[4])
 
@@ -21,15 +22,13 @@ RESTING_PATH = DATA_DIR + "resting_epochs/"
 all_data = dict({"l_freq": 0.01, "h_freq": 120})
 alpha = dict({"l_freq": 8, "h_freq": 12})
 beta = dict({"l_freq": 12, "h_freq": 30})
-low_gamma = dict({"l_freq": 30, "h_freq": 60})
-high_gamma = dict({"l_freq": 60, "h_freq": 120})
+gamma = dict({"l_freq": 30, "h_freq": 60})
 
 frequencies = {
     "all_data": all_data,
-    # "alpha": alpha,
-    # "beta": beta,
-    # "low_gamma": low_gamma,
-    # "high_gamma": high_gamma,
+    "alpha": alpha,
+    "beta": beta,
+    "gamma": gamma,
 }
 
 resting_epochs = {}
@@ -41,7 +40,7 @@ for key, frequency_params in frequencies.items():
     )
     resting_epochs = preprocessing.create_epochs(raw_filtered)
 
-    file_name = RESTING_PATH + key + "_all_epochs.pkl"
+    FILENAME = RESTING_PATH + key + "_all_epochs.pkl"
 
-    with open(file_name, "wb") as f:
+    with open(FILENAME, "wb") as f:
         pkl.dump(resting_epochs, f)

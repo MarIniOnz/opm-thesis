@@ -1,16 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 Load OPM Data, convert for use in MNE
 
 @author: Ryan Hill, Molly Rea, Martin Iniguez
 """
-#%% Import packages
-import numpy as np
-import mne
+
+# %% Import packages
 import os
-import pandas as pd
 import json
 from typing import Tuple
+
+import numpy as np
+import mne
+import pandas as pd
 from mne.io.constants import FIFF
 
 from opm_thesis.read_files.utils import (
@@ -38,11 +39,7 @@ def get_data_mne(
     :rtype: Tuple[mne.io.RawArray, np.ndarray, dict]
     """
 
-    #%% configure subjects directory
-    # data_dir = r'C:\Users\user\Desktop\MasterThesis\data_nottingham'
-    # subject = "11766"
-
-    #%% Data filename and path
+    # %% Data filename and path
     file_path = os.path.join(
         data_dir,
         day,
@@ -55,7 +52,7 @@ def get_data_mne(
     fpath = file_path_split[0] + "/"
     fname = file_path_split[1]
 
-    #%% Load Data
+    # %% Load Data
     # Requires a single cMEG file, doesn't concatenate runs yet
     print("Loading File")
 
@@ -65,8 +62,7 @@ def get_data_mne(
     del data_input
 
     fname_pre = fname.split("_meg.cMEG")[0]
-    f = open(fpath + fname_pre + "_meg.json")
-    # TODO: check if the names make sense between channels and HelmConfig
+    f = open(fpath + fname_pre + "_meg.json", encoding="utf-8")
     tsv_file = {
         "channels": pd.read_csv(fpath + fname_pre + "_channels.tsv", sep="\t"),
         "HelmConfig": pd.read_csv(fpath + fname_pre + "_HelmConfig.tsv", sep="\t"),
@@ -78,14 +74,13 @@ def get_data_mne(
     f.close()
     samp_freq = tsv_file["JSON"]["SamplingFrequency"]
 
-    #%% Sensor indexes and locations
+    # %% Sensor indexes and locations
     names = tsv_file["channels"]["name"]
     sensors = tsv_file["HelmConfig"]["Sensor"]
     loc_idx = find_matching_indices(names, sensors)
     chans = create_chans_dict(tsv_file, loc_idx)
-    # TODO: make it so it is a DataFrame instead of a dict of lists.
 
-    #%% Sensor information
+    # %% Sensor information
     print("Sorting Sensor Information")
     try:
         ch_scale = pd.Series.tolist(tsv_file["channels"]["nT/V"])
@@ -97,12 +92,12 @@ def get_data_mne(
     ch_names, ch_types, data = get_channels_and_data(data_raw, tsv_file, ch_scale)
     sfreq = samp_freq
 
-    #%% Create MNE info object
+    # %% Create MNE info object
     print("Creating MNE Info")
     info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types=ch_types)
     info["line_freq"] = tsv_file["JSON"]["PowerLineFrequency"]
 
-    #%% Sort sensor locations
+    # %% Sort sensor locations
     print("Sensor Location Information")
     nmeg = 0
     nstim = 0
@@ -129,7 +124,6 @@ def get_data_mne(
             ch["loc"] = calc_pos(pos, ori)
 
         # Update channel depending on type
-        # TODO: check if we can do ch_types instead of this weird replacement
         if chans["Channel_Type"][ii].replace(" ", "") == "TRIG":  # its a trigger!
             nstim += 1
             info["chs"][ii].update(
@@ -172,7 +166,6 @@ def get_data_mne(
                 loc=ch["loc"],
                 cal=1e-9 / tsv_file["channels"]["nT/V"][ii],
             )
-            # TODO: check if we are not multiplying twice by the factor.
 
         chs.append(ch)
 
@@ -182,7 +175,7 @@ def get_data_mne(
         "meg", "head", pd.DataFrame(tsv_file["SensorTransform"]).to_numpy()
     )
 
-    #%% Create MNE raw object
+    # %% Create MNE raw object
     print("Create raw object")
     raw = mne.io.RawArray(data, info)
 
@@ -226,19 +219,5 @@ def get_data_mne(
         "press_5": 128,
         "experiment_marker": 255,
     }
-
-    # #%% Digitisation and montage
-
-    # print("Digitisation")
-    # ch_pos = dict()
-    # for ii in range(tsv_file["channels"].shape[0]):
-    #     pos1 = chans["Locations"][ii]
-    #     if sum(np.isnan(pos1)) == 0:
-    #         ch_pos[chans["Channel_Name"][ii].replace(" ", "")] = pos1
-
-    # It is a system of 3D points. We need to convert it to a montage. Can be used for
-    # Source Analysis and ICA maybe? We might leave it out for now?
-    # mtg = mne.channels.make_dig_montage(ch_pos=ch_pos)
-    # raw.set_montage(mtg)  # TODO: problems setting the montage
 
     return raw, events, event_id

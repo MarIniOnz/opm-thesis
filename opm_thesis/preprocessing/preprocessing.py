@@ -2,6 +2,7 @@
 
 This script contains the preprocessing of the data. Takes the acquisition times and
 creates a Preprocessing object which contains the raw data, events, and epochs."""
+
 from typing import Tuple
 
 import mne
@@ -9,7 +10,6 @@ import numpy as np
 from mne.io import RawArray
 
 from opm_thesis.preprocessing.utils import (
-    get_closest_sensors,
     create_fixed_length_events,
     detect_bad_channels_by_zscore,
 )
@@ -31,7 +31,6 @@ class Preprocessing:
         raw: RawArray,
         events: np.ndarray,
         event_id: dict,
-        gestures: bool = False,
         filter_params: dict = {},
         notch_filter: bool = True,
         epochs_params: dict = {},
@@ -51,9 +50,6 @@ class Preprocessing:
         :type events: np.ndarray
         :param event_id: Dictionary with event codes as keys and event names as values
         :type event_id: dict
-        :param gestures: Whether the data contains gestures or digits' data.
-            False: digits' data, True: gestures' data, defaults to False
-        :type gestures: bool, optional
         :param filter_params: Parameters for filtering, defaults to {}
         :type filter_params: dict, optional
         :param notch_filter: Whether to apply notch filter, defaults to True
@@ -62,8 +58,6 @@ class Preprocessing:
         :type epochs_params: dict, optional
         :param channels_params: Parameters for selecting channels, defaults to {}
         :type channels_params: dict, optional
-        :param signal_sep_params: Parameters for signal space separation, defaults to {}
-        :type signal_sep_params: dict, optional
         """
 
         self.raw = raw
@@ -75,9 +69,10 @@ class Preprocessing:
         )
 
         self.events, self.event_id, self.wrong_trials = self.preprocess_events(
-            events, event_id, gestures
+            events,
+            event_id,
         )
-        self.epochs = self.create_epochs(self.raw, epochs_params, gestures)
+        self.epochs = self.create_epochs(self.raw, epochs_params)
 
         self.channel_names = self.select_channels(
             self.raw, channel_params=channels_params
@@ -89,7 +84,6 @@ class Preprocessing:
             events=self.events,
             event_id=self.event_id,
             epochs_params=epochs_params,
-            gestures=gestures,
         )
 
     def apply_filters(self, raw: RawArray, filter_params: dict, notch_filter=True):
@@ -114,7 +108,7 @@ class Preprocessing:
         return raw.copy().filter(**default_params)
 
     def preprocess_events(
-        self, events: np.ndarray, event_id: dict, gestures: bool = False
+        self, events: np.ndarray, event_id: dict
     ) -> Tuple[np.ndarray, dict, list]:
         """Preprocess events array.
 
@@ -130,61 +124,55 @@ class Preprocessing:
         :return: Preprocessed events array, updated event_id dictionary
         :rtype: Tuple[np.ndarray, dict]
         """
-        if gestures:
-            return events, event_id, []
-        else:
-            if events.size == 0:
-                events, events_id = create_fixed_length_events(self.raw, 2.0)
-                return events, events_id, []
+        if events.size == 0:
+            events, events_id = create_fixed_length_events(self.raw, 2.0)
+            return events, events_id, []
 
-            # Get indexes of events == 7
-            idx_trials = np.where(events[:, 2] == 7)[0]
-            wrong_previous_trial = []
+        # Get indexes of events == 7
+        idx_trials = np.where(events[:, 2] == 7)[0]
+        wrong_previous_trial = []
 
-            for i, trial_idx in enumerate(idx_trials):
-                # Get number of events in previous trial
-                num_events_trial = (
-                    trial_idx
-                    if trial_idx == idx_trials[0]
-                    else trial_idx - idx_trials[i - 1]
-                )
-                wrong_previous_trial.append(i)
+        for i, trial_idx in enumerate(idx_trials):
+            # Get number of events in previous trial
+            num_events_trial = (
+                trial_idx
+                if trial_idx == idx_trials[0]
+                else trial_idx - idx_trials[i - 1]
+            )
+            wrong_previous_trial.append(i)
 
-                if num_events_trial == 2:
-                    # Button not pressed
-                    events[trial_idx - 1, 2] = 6
-                elif num_events_trial == 3 and events[trial_idx - 1, 2] != 2 ** (
-                    events[trial_idx - 2, 2] + 2
-                ):
-                    # Wrong button pressed
-                    events[trial_idx - 2, 2] = 9
-                    events[trial_idx - 1, 2] = 11
-                elif num_events_trial > 3:
-                    # Too many buttons pressed
-                    events[trial_idx - num_events_trial + 1 : trial_idx, 2] = 12
-                    events[trial_idx - num_events_trial + 1, 2] = 10
-                else:
-                    # Correct button pressed
-                    wrong_previous_trial.pop(-1)
+            if num_events_trial == 2:
+                # Button not pressed
+                events[trial_idx - 1, 2] = 6
+            elif num_events_trial == 3 and events[trial_idx - 1, 2] != 2 ** (
+                events[trial_idx - 2, 2] + 2
+            ):
+                # Wrong button pressed
+                events[trial_idx - 2, 2] = 9
+                events[trial_idx - 1, 2] = 11
+            elif num_events_trial > 3:
+                # Too many buttons pressed
+                events[trial_idx - num_events_trial + 1 : trial_idx, 2] = 12
+                events[trial_idx - num_events_trial + 1, 2] = 10
+            else:
+                # Correct button pressed
+                wrong_previous_trial.pop(-1)
 
-            event_id["cue_not_answered"] = 6
-            event_id["cue_wrong_button"] = 9
-            event_id["cue_multiple_buttons"] = 10
-            event_id["press_wrong_button"] = 11
-            event_id["press_multiple_buttons"] = 12
+        event_id["cue_not_answered"] = 6
+        event_id["cue_wrong_button"] = 9
+        event_id["cue_multiple_buttons"] = 10
+        event_id["press_wrong_button"] = 11
+        event_id["press_multiple_buttons"] = 12
 
-            return events, event_id, wrong_previous_trial
+        return events, event_id, wrong_previous_trial
 
-    def create_epochs(self, raw: RawArray, epochs_params: dict = {}, gestures=False):
+    def create_epochs(self, raw: RawArray, epochs_params: dict = {}):
         """Create epochs from raw data.
 
         :param raw: Raw data
         :type raw: RawArray
         :param epochs_params: Parameters for epoch creation
         :type epochs_params: dict
-        :param gestures: Whether the data contains gestures or digits' data.
-            False: digits' data, True: gestures' data, defaults to False
-        :type gestures: bool, optional
         :return: Epochs object
         :rtype: mne.Epochs
         """
@@ -196,17 +184,6 @@ class Preprocessing:
                 tmin=0,
                 tmax=2.0,
                 baseline=(None, 1.0),
-                preload=True,
-            )
-
-        if gestures:
-            return mne.Epochs(
-                raw,
-                self.events,
-                self.event_id,
-                tmin=-0.5,
-                tmax=2.1,
-                baseline=(None, 0.0),
                 preload=True,
             )
 
@@ -292,7 +269,6 @@ class Preprocessing:
         events: np.ndarray,
         event_id: dict,
         epochs_params: dict,
-        gestures: bool = False,
     ) -> Tuple[RawArray, mne.Epochs]:
         """Remove artifacts from the data.
 
@@ -306,9 +282,6 @@ class Preprocessing:
         :type event_id: dict
         :param epochs_params: Parameters for epoch creation
         :type epochs_params: dict
-        :param gestures: Whether the data contains gestures or digits' data.
-            False: digits' data, True: gestures' data, defaults to False
-        :type gestures: bool, optional
         :return: Raw data and epochs after artifact removal
         :rtype: Tuple[RawArray, mne.Epochs]
         """
@@ -329,7 +302,7 @@ class Preprocessing:
         # Plot with the custom order
         raw.plot(block=True, events=events, event_id=event_id, order=custom_order)
 
-        epochs_corrected = self.create_epochs(raw, epochs_params, gestures=gestures)
+        epochs_corrected = self.create_epochs(raw, epochs_params)
 
         return raw, epochs_corrected
 

@@ -5,6 +5,7 @@ acquisition times and trains a binary CSP classifier for each possible pair of
 ids. Then, it predicts the label of each epoch using each classifier and gives the
 results of the pairs.
 """
+
 import pickle
 import mne
 import numpy as np
@@ -21,12 +22,12 @@ mid_gamma = dict({"l_freq": 60, "h_freq": 90})
 high_gamma = dict({"l_freq": 60, "h_freq": 120})
 
 frequencies = {
-    # "alpha": alpha,
-    # "beta": beta,
-    # "low_gamma": low_gamma,
-    # "low_mid_gamma": low_mid_gamma,
+    "alpha": alpha,
+    "beta": beta,
+    "low_gamma": low_gamma,
+    "low_mid_gamma": low_mid_gamma,
     "mid_gamma": mid_gamma,
-    # "high_gamma": high_gamma,
+    "high_gamma": high_gamma,
 }
 
 DATA_DIR = "./data/epochs/freq_bands/"

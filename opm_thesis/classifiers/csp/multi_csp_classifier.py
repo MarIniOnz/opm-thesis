@@ -4,6 +4,7 @@ This classifier takes the epochs from the different frequency bands and
 acquisition times and trains a binary CSP classifier for each possible pair of
 ids. Then, it predicts the label of each epoch using each classifier and
 aggregates the predictions to get the final label."""
+
 import pickle
 from collections import Counter
 import numpy as np
@@ -49,10 +50,6 @@ X_test = [epochs[test_indices] for epochs in data_epochs]
 Y_train = labels[train_indices]
 Y_test = labels[test_indices]
 
-# TODO: TAKE OUT, I AM GOING TO RANDOMIZE NOW THE LABELS
-# Y_train = np.random.permutation(Y_train)
-# Y_test = np.random.permutation(Y_test)
-
 all_predictions = {}
 
 for k, id_pair in enumerate(id_pairs):
@@ -61,8 +58,6 @@ for k, id_pair in enumerate(id_pairs):
     all_features_for_test = []
 
     for freq_idx, (train_epochs, test_epochs) in enumerate(zip(X_train, X_test)):
-        # if freq_idx > 1:
-        #     break
 
         train_indices = np.where(
             np.logical_or(Y_train == id_pair[0], Y_train == id_pair[1])
@@ -115,5 +110,3 @@ chance_level = accuracy_score(Y_test, final_predictions)
 print(
     f"Final multi-class classifier accuracy: {accuracy:.3f} / Chance level: {chance_level:.3f}"
 )
-
-final_predictions_total = [-1] * len(Y_test)  # Initialize with -1 or some invalid label
