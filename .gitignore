@@ -12,3 +12,4 @@ data/*
 misc_code/*
 *.csv
 nohup.out
+pictures/*
