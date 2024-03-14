@@ -1,10 +1,11 @@
-"""This script is used to classify the data using CSP and Logistic Regression.
+"""This script is used to classify the data using CSP and LDA on resting epochs.
 
 This classifier takes the epochs from the different frequency bands and
 acquisition times and trains a binary CSP classifier for each possible pair of
 ids. Then, it predicts the label of each epoch using each classifier and gives the
 results of the pairs.
 """
+
 import pickle
 import mne
 import numpy as np
@@ -25,10 +26,7 @@ frequencies = {
     "high_gamma": high_gamma,
 }
 
-DATA_DIR = (
-    r"/Users/martin.iniguez/Desktop/master_thesis/"
-    r"opm-thesis/data/data_nottingham_preprocessed"
-)
+DATA_DIR = ".data/"
 
 # Define possible pairs for classification
 ids = [2**i for i in range(3, 8)]

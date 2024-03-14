@@ -2,11 +2,12 @@
 
 This script contains the preprocessing of the data. Takes the acquisition times and
 creates a Preprocessing object which contains the raw data, events, and epochs."""
+
 import pickle
 import time
 from os import mkdir
 
-from opm_thesis.read_files.cMEG2fif_bespoke import get_data_mne
+from opm_thesis.read_files.cMEG2fiff_bespoke import get_data_mne
 from opm_thesis.preprocessing.preprocessing import Preprocessing
 
 DATA_DIR = r"/Users/martin.iniguez/Desktop/master-thesis/data_nottingham"

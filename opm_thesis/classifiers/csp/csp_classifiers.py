@@ -1,4 +1,4 @@
-"""This script is used to classify the data using CSP and Logistic Regression.
+"""This script is used to classify the data using CSP and LDA.
 
 This classifier takes the epochs from the different frequency bands and
 acquisition times and trains a binary CSP classifier for each possible pair of

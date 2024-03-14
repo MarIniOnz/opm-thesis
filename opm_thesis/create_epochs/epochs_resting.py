@@ -1,7 +1,7 @@
 """Creating epochs for resting state data."""
 
 import pickle as pkl
-from opm_thesis.read_files.cMEG2fif_bespoke import get_data_mne
+from opm_thesis.read_files.cMEG2fiff_bespoke import get_data_mne
 from opm_thesis.preprocessing.preprocessing import Preprocessing
 
 
