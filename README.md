@@ -5,7 +5,7 @@ This repository contains the publicly available code associated with the Master'
 Thesis supervised by Prof. Dr. med. Surjo R. Soekadar, Dr. Livia De Hoz, and [Jan Zerfowski, MSc](https://github.com/jzerfowski/).
 
 ## Content of the repository
-- `readme.md`: Readme file containing the structure of the repository.
+- `readme.md`: This file.
 - `Makefile`: File containing a set of directives used with the *make* command line utility to automate the build process of a project. It includes commands for compiling code, installing dependencies, running tests, and formatting the files in the repository.
 - `readme.md`: Readme file containing the structure of the repository.
 - `pyproject.toml`: This file specifies the build system requirements for the Python project. It is used to define settings such as the package metadata, dependencies, and compatible versions.
@@ -45,7 +45,7 @@ Stroke significantly impairs upper limb function, directly affecting quality of 
 
 This research explores the use of magnetoencephalography (MEG) with Optically Pumped Magnetometers (OPMs), which provide higher spatial resolution, focusing on the potential for discriminating finger movements. By investigating the capabilities of OPM-MEG through frequency analysis, spatial filtering, and deep learning, this thesis aims to advance BCI technology, focusing on decoding finger movement-related neural activity.
 
-Initial findings in this study hinted at potential for binary classification, particularly in the beta band (\SIrange{12.5}{30}{\hertz}). Frequency-based analysis, focused on that band, underscored the difficulty in achieving reliable discrimination via visualization. Using more complex approaches, a notable outcome was achieved with a Low-Frequency Convolutional Neural Network (LF-CNN), revealing a classification accuracy of 76\% between two specific finger movements. This result is comparable to state-of-the-art findings using EEG. Multi-class discrimination among five fingers, on the other hand, proved to be challenging since the differences in brain activity were too subtle.
+Initial findings in this study hinted at potential for binary classification, particularly in the beta band (12.5 to 30 Hz). Frequency-based analysis, focused on that band, underscored the difficulty in achieving reliable discrimination via visualization. Using more complex approaches, a notable outcome was achieved with a Low-Frequency Convolutional Neural Network (LF-CNN), revealing a classification accuracy of 76\% between two specific finger movements. This result is comparable to state-of-the-art findings using EEG. Multi-class discrimination among five fingers, on the other hand, proved to be challenging since the differences in brain activity were too subtle.
 
 The study shows that although OPMs provide high spatial resolution, their effectiveness in complex BCI tasks such as fine-grained finger movement discrimination remains limited. This highlights the necessity for additional research and the potential benefits of integrating OPM data with other modalities to improve classification performance.
 
