@@ -11,7 +11,6 @@ Thesis supervised by Prof. Dr. med. Surjo R. Soekadar, Dr. Livia De Hoz, and [Ja
 - `pyproject.toml`: This file specifies the build system requirements for the Python project. It is used to define settings such as the package metadata, dependencies, and compatible versions.
 - `setup.py`: A setup script for the package. This particular script specifies that the package is named *opm_thesis* and includes all sub-packages within the *opm_thesis* directory.
 - `requirements.txt`: This file lists the dependencies for the Python project, specifying exact versions to ensure consistent environments.
-- `master_thesis.pdf`: The Master Thesis pdf-file (this one).
 - `notebooks`: Folder containing the notebooks that created the figures and tables of thesis' Results section.
   - `figures`: Folder containing the notebooks to create the figures.
     - `beta_all_sensors.ipynb`: Notebook to obtain the Beta Power across Sensors figures.
